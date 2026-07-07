@@ -754,11 +754,11 @@ def strategy_records_from_df(df: pd.DataFrame) -> tuple[tuple[int, str, str, str
             (
                 int(idx),
                 stock_code,
-                str(row.get("上市日期", "") or ""),
-                str(row.get("預計掛牌日", "") or ""),
-                str(row.get("定價公告日", "") or row.get("更新時間", "") or ""),
+                first_non_empty_text(row.get("上市日期", "")),
+                first_non_empty_text(row.get("預計掛牌日", "")),
+                first_non_empty_text(row.get("定價公告日", ""), row.get("更新時間", "")),
                 float(clean_number(row.get("轉換價", 0))),
-                str(row.get("標記", "") or ""),
+                first_non_empty_text(row.get("標記", "")),
             )
         )
     return tuple(records)
@@ -918,6 +918,26 @@ def pass_gt(value: Any, threshold: float) -> bool:
     return is_valid_number(value) and float(value) > threshold
 
 
+def safe_text(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    return str(value)
+
+
+def first_non_empty_text(*values: Any) -> str:
+    for value in values:
+        text = safe_text(value).strip()
+        if text:
+            return text
+    return ""
+
+
+def safe_bool(value: Any) -> bool:
+    if value is None or pd.isna(value):
+        return False
+    return bool(value)
+
+
 def format_event_day(value: Any) -> str:
     if not is_valid_number(value):
         return "Day 未知"
@@ -998,8 +1018,8 @@ def classify_backtest_strategy(row: pd.Series) -> tuple[str, str, int]:
     gap_ok = pass_min(row.get("事件溢價率"), 2)
     pre_volume_ok = pass_max(row.get("5日量比"), 2)
     event_volume_ok = pass_max(row.get("掛牌日量比"), 1)
-    completed_listing = bool(row.get("完整掛牌事件", False))
-    anchor_type = str(row.get("20日動能錨點") or row.get("策略錨定類型") or "")
+    completed_listing = safe_bool(row.get("完整掛牌事件", False))
+    anchor_type = first_non_empty_text(row.get("20日動能錨點"), row.get("策略錨定類型"))
     momentum_label = "掛牌前20交易日漲幅>=20%" if completed_listing else "近20交易日動能>=20%"
     day_text = format_event_day(row.get("目前Day"))
     day_note = event_day_window_note(row.get("目前Day"))
