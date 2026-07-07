@@ -53,3 +53,33 @@ python -c "from pathlib import Path; p=Path('CB.py'); compile(p.read_text(encodi
 ```
 
 確認 `.streamlit/secrets.toml` 沒有被提交。
+
+## LINE 每日強勢掛牌通知
+
+`cb_line_alert.py` 會在 CB 掛牌日當天檢查完整強勢條件：
+
+- 市值 >= 80 億
+- 掛牌前 20 交易日漲幅 >= 20%
+- 現股相對轉換價溢價 >= 2%
+- 5 日量比 <= 2
+- 掛牌日量比 <= 1
+
+GitHub Actions workflow：`.github/workflows/cb-line-alert.yml`
+
+排程時間：每天台灣時間 17:00。
+
+GitHub repo 需設定 Secrets：
+
+```text
+FINLAB_API_TOKEN
+LINE_CHANNEL_ACCESS_TOKEN
+LINE_TO_ID
+```
+
+手動測試：
+
+```bash
+python cb_line_alert.py --date 2026-05-26 --dry-run --send-no-match
+```
+
+LINE 推播使用 Messaging API push message。`LINE_TO_ID` 可以是 userId、groupId 或 roomId。
