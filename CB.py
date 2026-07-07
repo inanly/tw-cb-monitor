@@ -43,6 +43,7 @@ KEYWORDS = ("公告", "轉換公司債", "轉換價格")
 REQUIRED_COLUMNS = ["CB代碼", "CB名稱", "股票代號", "轉換價", "標記"]
 DISPLAY_COLUMNS = [
     "標記",
+    "策略訊號",
     "分類",
     "CB代碼",
     "CB名稱",
@@ -53,6 +54,26 @@ DISPLAY_COLUMNS = [
     "現股價格",
     "轉換價值",
     "溢折價率",
+    "市值(億)",
+    "事件溢價率",
+    "掛牌前20交易日漲幅",
+    "5日量比",
+    "掛牌日量比",
+    "Day起算日",
+    "事件日來源",
+    "定價公告日",
+    "預計掛牌日",
+    "目前Day",
+    "目前Day顯示",
+    "買進時機",
+    "掛牌前後階段",
+    "回測樣本數",
+    "回測勝率",
+    "回測中位數",
+    "回測平均報酬",
+    "回測平均最大不利",
+    "策略錨定日",
+    "策略備註",
     "上市日期",
     "到期日期",
     "資料來源",
@@ -60,6 +81,71 @@ DISPLAY_COLUMNS = [
     "重訊連結",
     "更新時間",
 ]
+NUMERIC_COLUMNS = {
+    "轉換價",
+    "現股價格",
+    "轉換價值",
+    "溢折價率",
+    "市值(億)",
+    "事件溢價率",
+    "掛牌前20交易日漲幅",
+    "5日量比",
+    "掛牌日量比",
+    "目前Day",
+    "回測樣本數",
+    "回測勝率",
+    "回測中位數",
+    "回測平均報酬",
+    "回測平均最大不利",
+    "排序權重",
+    "分類權重",
+    "策略權重",
+}
+STRATEGY_SIGNAL_STRONG = "🔥 強勢續拉型"
+STRATEGY_SIGNAL_CANDIDATE = "🟡 強勢續拉候選"
+STRATEGY_SIGNAL_OVERHEAT = "⚠️ 過熱出貨疑慮"
+STRATEGY_SIGNAL_PRESSURE = "🟦 壓價觀察型"
+STRATEGY_SIGNAL_NORMAL = "—"
+PRELISTING_BACKTEST_STATS = {
+    -20: {"events": 371, "avg": 7.52, "median": 3.37, "win": 62.80},
+    -15: {"events": 371, "avg": 5.76, "median": 2.33, "win": 60.11},
+    -10: {"events": 371, "avg": 3.02, "median": 0.79, "win": 54.18},
+    -7: {"events": 371, "avg": 1.54, "median": 0.44, "win": 52.02},
+    -5: {"events": 371, "avg": 0.63, "median": 0.00, "win": 46.90},
+    -3: {"events": 371, "avg": 0.14, "median": -0.35, "win": 43.40},
+    -1: {"events": 371, "avg": -0.00, "median": -0.21, "win": 42.05},
+}
+STRONG_PRELISTING_BACKTEST_STATS = {
+    -20: {"events": 12, "avg": 45.14, "median": 42.05, "win": 100.00},
+    -15: {"events": 12, "avg": 38.62, "median": 38.25, "win": 100.00},
+    -10: {"events": 12, "avg": 18.87, "median": 17.88, "win": 100.00},
+    -7: {"events": 12, "avg": 10.92, "median": 9.66, "win": 83.33},
+    -5: {"events": 12, "avg": 9.02, "median": 10.78, "win": 83.33},
+    -3: {"events": 12, "avg": 4.62, "median": 6.09, "win": 66.67},
+    -1: {"events": 12, "avg": 2.25, "median": -0.18, "win": 50.00},
+}
+ENTRY_DAY_BACKTEST_STATS = {
+    0: {"events": 12, "avg": 20.43, "median": 11.51, "win": 83.33, "mae": -7.09},
+    1: {"events": 12, "avg": 18.77, "median": 8.95, "win": 83.33, "mae": -6.60},
+    2: {"events": 12, "avg": 15.69, "median": 9.51, "win": 75.00, "mae": -8.70},
+    3: {"events": 12, "avg": 15.76, "median": 8.18, "win": 58.33, "mae": -8.74},
+    4: {"events": 12, "avg": 15.01, "median": 10.93, "win": 75.00, "mae": -9.19},
+    5: {"events": 12, "avg": 15.81, "median": 9.96, "win": 75.00, "mae": -8.72},
+    6: {"events": 12, "avg": 12.78, "median": 8.45, "win": 75.00, "mae": -9.68},
+    7: {"events": 12, "avg": 9.80, "median": 6.33, "win": 66.67, "mae": -10.74},
+    8: {"events": 12, "avg": 8.91, "median": 10.29, "win": 66.67, "mae": -10.98},
+    9: {"events": 12, "avg": 12.13, "median": 15.74, "win": 66.67, "mae": -8.35},
+    10: {"events": 12, "avg": 11.79, "median": 16.22, "win": 66.67, "mae": -7.71},
+    11: {"events": 12, "avg": 12.04, "median": 18.84, "win": 66.67, "mae": -6.49},
+    12: {"events": 12, "avg": 9.75, "median": 10.26, "win": 58.33, "mae": -6.01},
+    13: {"events": 12, "avg": 7.77, "median": 6.52, "win": 66.67, "mae": -5.81},
+    14: {"events": 12, "avg": 6.53, "median": 7.36, "win": 66.67, "mae": -6.14},
+    15: {"events": 12, "avg": 5.88, "median": 6.57, "win": 66.67, "mae": -5.27},
+    16: {"events": 12, "avg": 3.21, "median": 1.77, "win": 50.00, "mae": -5.39},
+    17: {"events": 12, "avg": 3.45, "median": 2.67, "win": 58.33, "mae": -3.91},
+    18: {"events": 12, "avg": 3.72, "median": 4.35, "win": 75.00, "mae": -2.10},
+    19: {"events": 12, "avg": 2.91, "median": 2.74, "win": 83.33, "mae": -0.67},
+}
 
 HTTP_HEADERS = {
     "User-Agent": (
@@ -130,6 +216,7 @@ def default_feed_urls() -> tuple[str, ...]:
         "公告 轉換公司債 轉換價格",
         "轉換公司債 轉換價格 溢價率",
         "轉換債 轉換價格 訂每股",
+        "轉換公司債 預計掛牌日 上櫃買賣",
     )
     google_feeds = tuple(
         f"https://news.google.com/rss/search?q={quote_plus(query)}+when:60d&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
@@ -143,7 +230,7 @@ def default_feed_urls() -> tuple[str, ...]:
 
 
 def empty_cb_frame() -> pd.DataFrame:
-    columns = list(dict.fromkeys(DISPLAY_COLUMNS + ["排序權重", "分類權重"]))
+    columns = list(dict.fromkeys(DISPLAY_COLUMNS + ["排序權重", "分類權重", "策略權重"]))
     return pd.DataFrame(columns=columns)
 
 
@@ -157,9 +244,9 @@ def ensure_columns(df: pd.DataFrame | None) -> pd.DataFrame:
         if col not in df.columns:
             df[col] = "" if col != "轉換價" else 0.0
 
-    for col in dict.fromkeys(DISPLAY_COLUMNS + ["排序權重", "分類權重"]):
+    for col in dict.fromkeys(DISPLAY_COLUMNS + ["排序權重", "分類權重", "策略權重"]):
         if col not in df.columns:
-            df[col] = "" if col not in {"轉換價", "現股價格", "轉換價值", "溢折價率", "排序權重", "分類權重"} else 0.0
+            df[col] = 0.0 if col in NUMERIC_COLUMNS else ""
 
     return df
 
@@ -481,6 +568,20 @@ def token_fingerprint(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
 
 
+def read_secret_finlab_token() -> str:
+    try:
+        token = st.secrets.get("FINLAB_API_TOKEN", "")
+        if token:
+            return str(token).strip()
+
+        finlab_section = st.secrets.get("finlab", {})
+        if hasattr(finlab_section, "get"):
+            return str(finlab_section.get("token", "")).strip()
+    except Exception:
+        return ""
+    return ""
+
+
 def latest_value_from_wide_frame(frame: pd.DataFrame, code: str) -> float:
     code = normalize_stock_code(code)
     if not code or frame.empty:
@@ -498,6 +599,502 @@ def latest_value_from_wide_frame(frame: pd.DataFrame, code: str) -> float:
         return float(series.iloc[-1])
     except Exception:
         return 0.0
+
+
+def parse_dashboard_date(value: Any) -> pd.Timestamp | pd.NaT:
+    text = str(value or "").strip()
+    if not text or text in {"未上市", "待掛牌", "待掛牌代碼", "nan", "NaT"}:
+        return pd.NaT
+    parsed = pd.to_datetime(text, errors="coerce")
+    if pd.isna(parsed):
+        return pd.NaT
+    try:
+        if getattr(parsed, "tzinfo", None) is not None:
+            parsed = parsed.tz_convert("Asia/Taipei").tz_localize(None)
+    except Exception:
+        try:
+            parsed = parsed.tz_localize(None)
+        except Exception:
+            pass
+    return pd.Timestamp(parsed).normalize()
+
+
+def format_dashboard_date(value: Any, empty_value: str = "") -> str:
+    parsed = parse_dashboard_date(value)
+    if pd.isna(parsed):
+        return empty_value
+    return pd.Timestamp(parsed).strftime("%Y-%m-%d")
+
+
+def normalize_year(year_text: str, anchor: pd.Timestamp | pd.NaT = pd.NaT) -> int:
+    year = int(year_text)
+    if year < 1000:
+        return year + 1911
+    return year
+
+
+def build_date_from_parts(
+    year_text: str | None,
+    month_text: str,
+    day_text: str,
+    anchor: pd.Timestamp | pd.NaT = pd.NaT,
+) -> pd.Timestamp | pd.NaT:
+    try:
+        if year_text:
+            year = normalize_year(year_text, anchor)
+        elif pd.notna(anchor):
+            year = int(pd.Timestamp(anchor).year)
+        else:
+            year = datetime.now().year
+        month = int(month_text)
+        day = int(day_text)
+        parsed = pd.Timestamp(datetime(year, month, day).date())
+        if not year_text and pd.notna(anchor) and parsed < pd.Timestamp(anchor).normalize() - pd.Timedelta(days=30):
+            parsed = pd.Timestamp(datetime(year + 1, month, day).date())
+        return parsed
+    except Exception:
+        return pd.NaT
+
+
+def parse_chinese_or_numeric_date(text: str, anchor: pd.Timestamp | pd.NaT = pd.NaT) -> pd.Timestamp | pd.NaT:
+    text = str(text or "")
+    patterns = [
+        r"(?P<year>\d{2,4})\s*[年/-]\s*(?P<month>\d{1,2})\s*[月/-]\s*(?P<day>\d{1,2})\s*日?",
+        r"(?P<month>\d{1,2})\s*月\s*(?P<day>\d{1,2})\s*日",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if not match:
+            continue
+        parsed = build_date_from_parts(
+            match.groupdict().get("year"),
+            match.group("month"),
+            match.group("day"),
+            anchor,
+        )
+        if pd.notna(parsed):
+            return parsed
+    return pd.NaT
+
+
+def extract_expected_listing_date(text: str, announcement_date: Any = "") -> str:
+    anchor = parse_dashboard_date(announcement_date)
+    compact = re.sub(r"\s+", "", strip_html(text))
+    if not compact:
+        return ""
+
+    date_pattern = r"(?:\d{2,4}\s*[年/-]\s*\d{1,2}\s*[月/-]\s*\d{1,2}\s*日?|\d{1,2}\s*月\s*\d{1,2}\s*日)"
+    listing_terms = r"(?:預計掛牌日|掛牌日|上市日|上櫃日|上櫃買賣日|櫃檯買賣日|開始上櫃買賣|開始櫃檯買賣|開始買賣|上櫃買賣|櫃檯買賣)"
+    patterns = [
+        rf"{listing_terms}[：:為訂於將於]*(?P<date>{date_pattern})",
+        rf"(?:預計|訂於|將於|於)?(?P<date>{date_pattern}).{{0,24}}?{listing_terms}",
+        rf"{listing_terms}.{{0,24}}?(?P<date>{date_pattern})",
+    ]
+
+    for pattern in patterns:
+        for match in re.finditer(pattern, compact):
+            parsed = parse_chinese_or_numeric_date(match.group("date"), anchor)
+            if pd.notna(parsed):
+                return parsed.strftime("%Y-%m-%d")
+    return ""
+
+
+def finlab_wide_to_pandas(frame: Any) -> pd.DataFrame:
+    df = pd.DataFrame(frame.copy())
+    df.index = pd.to_datetime(df.index)
+    df.columns = [str(column) for column in df.columns]
+    return df.sort_index()
+
+
+def value_at_or_before(frame: pd.DataFrame | None, code: str, target_date: pd.Timestamp) -> float:
+    code = normalize_stock_code(code)
+    if frame is None or frame.empty or not code or code not in frame.columns or pd.isna(target_date):
+        return float("nan")
+
+    series = pd.to_numeric(frame[code], errors="coerce").dropna()
+    if series.empty:
+        return float("nan")
+
+    pos = series.index.searchsorted(target_date, side="right") - 1
+    if pos < 0:
+        return float("nan")
+    return float(series.iloc[pos])
+
+
+def average_before(series: pd.Series, pos: int, lookback: int, min_count: int) -> float:
+    if pos <= 0:
+        return float("nan")
+    window = pd.to_numeric(series.iloc[max(0, pos - lookback) : pos], errors="coerce").dropna()
+    if len(window) < min_count:
+        return float("nan")
+    return float(window.mean())
+
+
+def is_valid_number(value: Any) -> bool:
+    try:
+        return pd.notna(value) and float(value) == float(value)
+    except Exception:
+        return False
+
+
+def market_cap_to_yi_twd(value: float) -> float:
+    if not is_valid_number(value):
+        return float("nan")
+    return float(value) / 100_000_000
+
+
+def strategy_records_from_df(df: pd.DataFrame) -> tuple[tuple[int, str, str, str, str, float, str], ...]:
+    records: list[tuple[int, str, str, str, str, float, str]] = []
+    for idx, row in df.reset_index(drop=True).iterrows():
+        stock_code = normalize_stock_code(row.get("股票代號", ""))
+        if not stock_code:
+            continue
+        records.append(
+            (
+                int(idx),
+                stock_code,
+                str(row.get("上市日期", "") or ""),
+                str(row.get("預計掛牌日", "") or ""),
+                str(row.get("定價公告日", "") or row.get("更新時間", "") or ""),
+                float(clean_number(row.get("轉換價", 0))),
+                str(row.get("標記", "") or ""),
+            )
+        )
+    return tuple(records)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_finlab_strategy_factors(
+    records: tuple[tuple[int, str, str, str, str, float, str], ...],
+    token_key: str,
+) -> tuple[dict[int, dict[str, Any]], list[str]]:
+    factors_by_idx: dict[int, dict[str, Any]] = {}
+    issues: list[str] = []
+
+    if not records or not token_key:
+        return factors_by_idx, issues
+
+    token = os.environ.get("FINLAB_API_TOKEN", "").strip()
+    if not token:
+        issues.append("回測策略標記需要 FinLab token；目前只顯示基本分類。")
+        return factors_by_idx, issues
+
+    try:
+        import finlab
+        from finlab import data
+    except ImportError:
+        issues.append("尚未安裝 finlab 套件，無法計算回測策略因子。請先執行：pip install finlab")
+        return factors_by_idx, issues
+
+    try:
+        finlab.login(token)
+        data.truncate_start = "2020-01-01"
+        data.truncate_end = datetime.now().strftime("%Y-%m-%d")
+        close = finlab_wide_to_pandas(data.get("price:收盤價"))
+    except Exception as exc:
+        issues.append(f"FinLab 收盤價讀取失敗，無法計算回測策略因子：{exc}")
+        return factors_by_idx, issues
+
+    volume: pd.DataFrame | None = None
+    market_value: pd.DataFrame | None = None
+    try:
+        volume = finlab_wide_to_pandas(data.get("price:成交股數"))
+    except Exception as exc:
+        issues.append(f"FinLab 成交量讀取失敗，量比條件將無法完整判斷：{exc}")
+
+    try:
+        market_value = finlab_wide_to_pandas(data.get("etl:market_value"))
+    except Exception as exc:
+        issues.append(f"FinLab 市值讀取失敗，市值條件將無法完整判斷：{exc}")
+
+    latest_close_date = close.index.max() if not close.empty else pd.NaT
+
+    for row_idx, stock_code, listing_date_text, expected_listing_date_text, update_time_text, conversion_price, tag in records:
+        if stock_code not in close.columns:
+            continue
+
+        close_series = pd.to_numeric(close[stock_code], errors="coerce").dropna()
+        if close_series.empty:
+            continue
+
+        listing_date = parse_dashboard_date(listing_date_text)
+        expected_listing_date = parse_dashboard_date(expected_listing_date_text)
+        publish_date = parse_dashboard_date(update_time_text)
+        if pd.notna(listing_date):
+            event_date = listing_date
+            event_source = "掛牌日"
+        elif pd.notna(expected_listing_date):
+            event_date = expected_listing_date
+            event_source = "預計掛牌日"
+        else:
+            event_date = publish_date
+            event_source = "定價公告日"
+        has_completed_listing = pd.notna(listing_date) and listing_date <= latest_close_date and tag == "已掛牌"
+
+        current_event_day = float("nan")
+        event_trade_date = pd.NaT
+        if pd.notna(event_date):
+            if pd.notna(latest_close_date) and pd.Timestamp(event_date) > pd.Timestamp(latest_close_date):
+                event_trade_date = pd.Timestamp(event_date)
+                next_day = pd.Timestamp(latest_close_date).normalize() + pd.Timedelta(days=1)
+                future_days = pd.bdate_range(next_day, pd.Timestamp(event_date).normalize())
+                current_event_day = -float(len(future_days))
+            else:
+                event_pos = int(close_series.index.searchsorted(event_date, side="left"))
+                if 0 <= event_pos < len(close_series):
+                    event_trade_date = pd.Timestamp(close_series.index[event_pos])
+                    current_event_day = float(len(close_series) - 1 - event_pos)
+                elif event_pos >= len(close_series):
+                    event_trade_date = pd.Timestamp(event_date)
+                    current_event_day = float(len(close_series) - event_pos)
+
+        if has_completed_listing:
+            pos = int(close_series.index.searchsorted(listing_date, side="left"))
+            anchor_type = "掛牌日"
+        else:
+            pos = len(close_series) - 1
+            anchor_type = "候選觀察日"
+
+        if pos < 0 or pos >= len(close_series):
+            pos = len(close_series) - 1
+            anchor_type = "候選觀察日"
+
+        anchor_date = pd.Timestamp(close_series.index[pos])
+        anchor_price = float(close_series.iloc[pos])
+        event_gap = (anchor_price / conversion_price - 1) * 100 if conversion_price > 0 and anchor_price > 0 else float("nan")
+
+        pre_20d_return = float("nan")
+        if pos >= 20:
+            prior_price = float(close_series.iloc[pos - 20])
+            if prior_price > 0:
+                pre_20d_return = (anchor_price / prior_price - 1) * 100
+
+        pre_5d_volume_ratio = float("nan")
+        event_volume_ratio = float("nan")
+        if volume is not None and stock_code in volume.columns:
+            volume_series = pd.to_numeric(volume[stock_code], errors="coerce").dropna()
+            if not volume_series.empty:
+                volume_pos = int(volume_series.index.searchsorted(anchor_date, side="right") - 1)
+                if volume_pos >= 0:
+                    pre_20d_avg_volume = average_before(volume_series, volume_pos, 20, 10)
+                    pre_5d_avg_volume = average_before(volume_series, volume_pos, 5, 3)
+                    event_volume = float(volume_series.iloc[volume_pos])
+                    if is_valid_number(pre_20d_avg_volume) and pre_20d_avg_volume > 0:
+                        pre_5d_volume_ratio = pre_5d_avg_volume / pre_20d_avg_volume
+                        if has_completed_listing:
+                            event_volume_ratio = event_volume / pre_20d_avg_volume
+
+        market_cap_yi = market_cap_to_yi_twd(value_at_or_before(market_value, stock_code, anchor_date))
+
+        factors_by_idx[row_idx] = {
+            "市值(億)": market_cap_yi,
+            "事件溢價率": event_gap,
+            "掛牌前20交易日漲幅": pre_20d_return,
+            "5日量比": pre_5d_volume_ratio,
+            "掛牌日量比": event_volume_ratio,
+            "Day起算日": event_trade_date.strftime("%Y-%m-%d") if pd.notna(event_trade_date) else "",
+            "事件日來源": event_source,
+            "定價公告日": publish_date.strftime("%Y-%m-%d") if pd.notna(publish_date) else "",
+            "目前Day": current_event_day,
+            "策略錨定日": anchor_date.strftime("%Y-%m-%d"),
+            "策略錨定類型": anchor_type,
+            "完整掛牌事件": has_completed_listing,
+        }
+
+    return factors_by_idx, issues
+
+
+def pass_min(value: Any, threshold: float) -> bool:
+    return is_valid_number(value) and float(value) >= threshold
+
+
+def pass_max(value: Any, threshold: float) -> bool:
+    return is_valid_number(value) and float(value) <= threshold
+
+
+def pass_gt(value: Any, threshold: float) -> bool:
+    return is_valid_number(value) and float(value) > threshold
+
+
+def format_event_day(value: Any) -> str:
+    if not is_valid_number(value):
+        return "Day 未知"
+    day = int(float(value))
+    return f"T{day:+d}"
+
+
+def event_day_window_note(value: Any) -> str:
+    if not is_valid_number(value):
+        return "尚無事件日可對齊。"
+    day = int(float(value))
+    if day < -10:
+        return "仍在掛牌前早段，等待定價與量價結構確認。"
+    if day <= -5:
+        return "位於掛牌前預反應觀察窗 T-10~T-5。"
+    if day < 0:
+        return "已接近掛牌，歷史上追價優勢下降。"
+    if day < 10:
+        return "尚未進入回測主要優勢窗 T+10~T+20。"
+    if day < 20:
+        return "位於回測主要優勢窗 T+10~T+20。"
+    if day == 20:
+        return "已到固定觀察出場點 T+20，不再視為新的買進統計。"
+    return "已超過回測主要優勢窗，留意續航與停利。"
+
+
+def entry_timing_label(value: Any) -> str:
+    if not is_valid_number(value):
+        return "Day 未知"
+    day = int(float(value))
+    if day < -10:
+        return "掛牌前早段"
+    if day <= -5:
+        return "預掛牌強勢窗"
+    if day < 0:
+        return "掛牌前不追"
+    if day <= 3:
+        return "早期觀察，不重倉"
+    if day <= 8:
+        return "洗盤確認期"
+    if day <= 11:
+        return "最佳切入窗"
+    if day <= 19:
+        return "續拉/停利窗"
+    if day == 20:
+        return "T+20觀察結束"
+    return "不追，續航觀察"
+
+
+def prelisting_stage_label(value: Any) -> str:
+    return entry_timing_label(value)
+
+
+def entry_backtest_stats(value: Any) -> dict[str, float]:
+    if not is_valid_number(value):
+        return {}
+    day = int(float(value))
+    if day < 0:
+        nearest_day = min(PRELISTING_BACKTEST_STATS, key=lambda candidate: abs(candidate - day))
+        stats = PRELISTING_BACKTEST_STATS.get(nearest_day, {})
+        if not stats:
+            return {}
+        return {
+            "events": stats["events"],
+            "avg": stats["avg"],
+            "median": stats["median"],
+            "win": stats["win"],
+            "mae": float("nan"),
+        }
+    if day >= 20:
+        return {}
+    return ENTRY_DAY_BACKTEST_STATS.get(day, {})
+
+
+def classify_backtest_strategy(row: pd.Series) -> tuple[str, str, int]:
+    market_ok = pass_min(row.get("市值(億)"), 80)
+    momentum_ok = pass_min(row.get("掛牌前20交易日漲幅"), 20)
+    gap_ok = pass_min(row.get("事件溢價率"), 2)
+    pre_volume_ok = pass_max(row.get("5日量比"), 2)
+    event_volume_ok = pass_max(row.get("掛牌日量比"), 1)
+    completed_listing = bool(row.get("完整掛牌事件", False))
+    day_text = format_event_day(row.get("目前Day"))
+    day_note = event_day_window_note(row.get("目前Day"))
+
+    base_checks = [
+        ("市值>=80億", market_ok),
+        ("掛牌前20交易日漲幅>=20%", momentum_ok),
+        ("事件溢價>=2%", gap_ok),
+        ("5日量比<=2", pre_volume_ok),
+    ]
+    failed = [label for label, ok in base_checks if not ok]
+
+    if market_ok and momentum_ok and gap_ok and pre_volume_ok and completed_listing and event_volume_ok:
+        return STRATEGY_SIGNAL_STRONG, f"完整命中回測條件；目前 {day_text}，{day_note}", 0
+
+    if market_ok and momentum_ok and gap_ok and pre_volume_ok and not completed_listing:
+        return STRATEGY_SIGNAL_CANDIDATE, f"尚無完整掛牌日量比；目前 {day_text}，等待掛牌後確認。", 1
+
+    if momentum_ok and gap_ok and (pass_gt(row.get("5日量比"), 2) or pass_gt(row.get("掛牌日量比"), 1)):
+        return STRATEGY_SIGNAL_OVERHEAT, "動能與價差符合，但量能偏熱，需防追高或事件日出貨。", 2
+
+    if pass_min(row.get("事件溢價率"), -12) and pass_max(row.get("事件溢價率"), 2):
+        return STRATEGY_SIGNAL_PRESSURE, "事件價差接近或低於轉換價，偏向壓價/轉換價觀察。", 3
+
+    if failed:
+        return STRATEGY_SIGNAL_NORMAL, "未通過：" + "、".join(failed[:3]), 4
+    return STRATEGY_SIGNAL_NORMAL, "未形成強勢續拉型態。", 4
+
+
+def apply_backtest_strategy(
+    df: pd.DataFrame,
+    finlab_token: str = "",
+    enabled: bool = True,
+) -> tuple[pd.DataFrame, list[str]]:
+    df = ensure_columns(df).copy().reset_index(drop=True)
+    issues: list[str] = []
+
+    df["策略訊號"] = STRATEGY_SIGNAL_NORMAL
+    df["策略備註"] = ""
+    df["策略權重"] = 4
+    df["完整掛牌事件"] = False
+    df["買進時機"] = ""
+    df["掛牌前後階段"] = ""
+    df["目前Day顯示"] = ""
+    for factor_col in [
+        "市值(億)",
+        "事件溢價率",
+        "掛牌前20交易日漲幅",
+        "5日量比",
+        "掛牌日量比",
+        "目前Day",
+        "回測樣本數",
+        "回測勝率",
+        "回測中位數",
+        "回測平均報酬",
+        "回測平均最大不利",
+    ]:
+        df[factor_col] = pd.NA
+    df["Day起算日"] = ""
+
+    if df.empty or not enabled:
+        return ensure_columns(df), issues
+
+    if finlab_token:
+        os.environ["FINLAB_API_TOKEN"] = finlab_token
+    else:
+        issues.append("未提供 FinLab token，已略過強勢續拉型 CB 回測策略標記。")
+        return ensure_columns(df), issues
+
+    records = strategy_records_from_df(df)
+    factors, factor_issues = fetch_finlab_strategy_factors(records, token_fingerprint(finlab_token))
+    issues.extend(factor_issues)
+
+    for row_idx, factor_values in factors.items():
+        for key, value in factor_values.items():
+            df.at[row_idx, key] = value
+
+    for idx, row in df.iterrows():
+        stats = entry_backtest_stats(row.get("目前Day"))
+        df.at[idx, "目前Day顯示"] = format_event_day(row.get("目前Day"))
+        df.at[idx, "買進時機"] = entry_timing_label(row.get("目前Day"))
+        df.at[idx, "掛牌前後階段"] = prelisting_stage_label(row.get("目前Day"))
+        if stats:
+            df.at[idx, "回測樣本數"] = stats["events"]
+            df.at[idx, "回測勝率"] = stats["win"]
+            df.at[idx, "回測中位數"] = stats["median"]
+            df.at[idx, "回測平均報酬"] = stats["avg"]
+            df.at[idx, "回測平均最大不利"] = stats["mae"]
+
+        signal, note, weight = classify_backtest_strategy(row)
+        df.at[idx, "策略訊號"] = signal
+        df.at[idx, "策略備註"] = note
+        df.at[idx, "策略權重"] = weight
+
+    df = df.sort_values(
+        by=["排序權重", "策略權重", "分類權重", "溢折價率", "股票代號"],
+        ascending=[True, True, True, False, True],
+    ).reset_index(drop=True)
+    return ensure_columns(df), issues
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -581,6 +1178,9 @@ def fetch_tpex_cb() -> tuple[pd.DataFrame, list[str]]:
                 "轉換價": conversion_price,
                 "上市日期": listing_date,
                 "到期日期": maturity_date,
+                "定價公告日": "",
+                "預計掛牌日": listing_date,
+                "事件日來源": "掛牌日",
                 "標記": "已掛牌",
                 "資料來源": "TPEx OpenAPI",
                 "更新時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -611,20 +1211,24 @@ def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, l
         for entry in parsed.entries:
             title = strip_html(entry.get("title", ""))
             full_text = entry_text(entry)
+            published_text = entry.get("published", "") or entry.get("updated", "")
 
             if not is_potential_cb_pricing_text(full_text):
                 continue
 
             stock_code, stock_name = extract_stock_identity(full_text)
             conversion_price = extract_conversion_price(full_text)
+            expected_listing_date = extract_expected_listing_date(full_text, published_text)
 
-            if not is_new_pricing_case(full_text) or not stock_code or conversion_price <= 0:
+            if not is_new_pricing_case(full_text) or not stock_code or conversion_price <= 0 or not expected_listing_date:
                 article_text = fetch_article_text(entry.get("link", ""))
                 if article_text:
                     full_text = f"{full_text} {article_text}"
+                    expected_listing_date = expected_listing_date or extract_expected_listing_date(full_text, published_text)
 
             stock_code, stock_name = extract_stock_identity(full_text)
             conversion_price = extract_conversion_price(full_text)
+            expected_listing_date = expected_listing_date or extract_expected_listing_date(full_text, published_text)
             if not is_new_pricing_case(full_text) or not stock_code or conversion_price <= 0:
                 continue
 
@@ -635,17 +1239,20 @@ def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, l
 
             rows.append(
                 {
-                    "CB代碼": "未掛牌",
+                    "CB代碼": "待掛牌代碼",
                     "CB名稱": stock_name or f"{stock_code} 新定價案",
                     "股票代號": stock_code,
                     "轉換價": conversion_price,
-                    "上市日期": "未上市",
+                    "上市日期": "待掛牌",
                     "到期日期": "",
+                    "定價公告日": format_dashboard_date(published_text),
+                    "預計掛牌日": expected_listing_date or "待查",
+                    "事件日來源": "預計掛牌日" if expected_listing_date else "定價公告日",
                     "標記": "新定價案",
                     "資料來源": "RSS 重訊",
                     "重訊標題": title,
                     "重訊連結": entry.get("link", ""),
-                    "更新時間": entry.get("published", "") or entry.get("updated", ""),
+                    "更新時間": published_text,
                 }
             )
 
@@ -747,10 +1354,18 @@ def enrich_with_quotes(df: pd.DataFrame, finlab_token: str = "", quote_mode: str
 
 def render_metrics(df: pd.DataFrame) -> None:
     counts = df["分類"].value_counts() if "分類" in df.columns else pd.Series(dtype=int)
-    labels = ["🚀 拉抬攻擊", "🟦 疑似壓價", "⚪ 暫無報價", "⏳ 觀察標的"]
-    cols = st.columns(4)
-    for col, label in zip(cols, labels):
-        col.metric(label, int(counts.get(label, 0)))
+    strategy_counts = df["策略訊號"].value_counts() if "策略訊號" in df.columns else pd.Series(dtype=int)
+    timing_counts = df["買進時機"].value_counts() if "買進時機" in df.columns else pd.Series(dtype=int)
+    metric_items = [
+        ("🔥 強勢策略", int(strategy_counts.get(STRATEGY_SIGNAL_STRONG, 0))),
+        ("🟡 候選觀察", int(strategy_counts.get(STRATEGY_SIGNAL_CANDIDATE, 0))),
+        ("🕰️ 預掛牌窗", int(timing_counts.get("預掛牌強勢窗", 0))),
+        ("🎯 最佳切入窗", int(timing_counts.get("最佳切入窗", 0))),
+        ("🚀 拉抬攻擊", int(counts.get("🚀 拉抬攻擊", 0))),
+    ]
+    cols = st.columns(len(metric_items))
+    for col, (label, value) in zip(cols, metric_items):
+        col.metric(label, value)
 
 
 def render_warnings(issues: list[str]) -> None:
@@ -800,6 +1415,7 @@ def filter_dashboard(
     search_text: str,
     tags: list[str],
     classes: list[str],
+    strategy_signals: list[str],
     quote_sources: list[str],
 ) -> pd.DataFrame:
     filtered = ensure_columns(df).copy()
@@ -810,12 +1426,29 @@ def filter_dashboard(
     if classes and "全部" not in classes:
         filtered = filtered[filtered["分類"].isin(classes)]
 
+    if strategy_signals and "全部" not in strategy_signals:
+        filtered = filtered[filtered["策略訊號"].isin(strategy_signals)]
+
     if quote_sources and "全部" not in quote_sources:
         filtered = filtered[filtered["報價來源"].isin(quote_sources)]
 
     query = search_text.strip().lower()
     if query:
-        search_columns = ["CB代碼", "CB名稱", "股票代號", "標記", "分類", "資料來源", "重訊標題"]
+        search_columns = [
+            "CB代碼",
+            "CB名稱",
+            "股票代號",
+            "標記",
+            "分類",
+            "策略訊號",
+            "買進時機",
+            "掛牌前後階段",
+            "事件日來源",
+            "定價公告日",
+            "策略備註",
+            "資料來源",
+            "重訊標題",
+        ]
         haystack = filtered[[col for col in search_columns if col in filtered.columns]].fillna("").astype(str)
         mask = haystack.apply(lambda col: col.str.lower().str.contains(re.escape(query), na=False)).any(axis=1)
         filtered = filtered[mask]
@@ -828,16 +1461,61 @@ def render_status_chips(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
     visible = len(filtered_df)
     new_count = int((df["標記"] == "新定價案").sum()) if "標記" in df.columns else 0
     finlab_count = int((df["報價來源"] == "FinLab").sum()) if "報價來源" in df.columns else 0
+    strong_count = int((df["策略訊號"] == STRATEGY_SIGNAL_STRONG).sum()) if "策略訊號" in df.columns else 0
+    prelisting_count = int((df["買進時機"] == "預掛牌強勢窗").sum()) if "買進時機" in df.columns else 0
+    best_entry_count = int((df["買進時機"] == "最佳切入窗").sum()) if "買進時機" in df.columns else 0
     st.markdown(
         f"""
         <div class="cb-status">
             <span class="cb-chip">顯示 {visible} / {total} 筆</span>
             <span class="cb-chip">新定價案 {new_count} 筆</span>
+            <span class="cb-chip">強勢續拉型 {strong_count} 筆</span>
+            <span class="cb-chip">預掛牌窗 {prelisting_count} 筆</span>
+            <span class="cb-chip">最佳切入窗 {best_entry_count} 筆</span>
             <span class="cb-chip">FinLab 報價 {finlab_count} 筆</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def entry_day_backtest_table() -> pd.DataFrame:
+    rows = []
+    for day, stats in ENTRY_DAY_BACKTEST_STATS.items():
+        rows.append(
+            {
+                "目前Day": day,
+                "買進時機": entry_timing_label(day),
+                "樣本數": stats["events"],
+                "平均報酬": stats["avg"],
+                "中位數": stats["median"],
+                "勝率": stats["win"],
+                "平均最大不利": stats["mae"],
+            }
+        )
+    return pd.DataFrame(rows).sort_values("目前Day")
+
+
+def prelisting_backtest_table() -> pd.DataFrame:
+    rows = []
+    for dataset_name, stats_map, note in (
+        ("全樣本", PRELISTING_BACKTEST_STATS, "掛牌日前買進，掛牌日出場"),
+        ("強勢續拉型樣本", STRONG_PRELISTING_BACKTEST_STATS, "探索性型態參考，含掛牌日條件偏誤"),
+    ):
+        for day, stats in stats_map.items():
+            rows.append(
+                {
+                    "樣本": dataset_name,
+                    "買進日": day,
+                    "出場日": 0,
+                    "樣本數": stats["events"],
+                    "平均報酬": stats["avg"],
+                    "中位數": stats["median"],
+                    "勝率": stats["win"],
+                    "備註": note,
+                }
+            )
+    return pd.DataFrame(rows).sort_values(["樣本", "買進日"])
 
 
 def main() -> None:
@@ -846,20 +1524,29 @@ def main() -> None:
 
     with st.sidebar:
         st.subheader("資料設定")
-        env_token_available = bool(os.environ.get("FINLAB_API_TOKEN", "").strip())
+        secret_token = read_secret_finlab_token()
+        env_token = os.environ.get("FINLAB_API_TOKEN", "").strip()
+        configured_token = secret_token or env_token
+        configured_token_available = bool(configured_token)
         finlab_token_input = st.text_input(
             "FinLab API Token",
             type="password",
-            placeholder="可留空，改讀 FINLAB_API_TOKEN",
+            placeholder="可留空，改讀 secrets 或 FINLAB_API_TOKEN",
             help="Token 只會放在目前 Streamlit 行程記憶體，不會寫入程式檔。",
         )
-        finlab_token = finlab_token_input.strip() or os.environ.get("FINLAB_API_TOKEN", "").strip()
-        if env_token_available and not finlab_token_input:
-            st.caption("已偵測到環境變數 FINLAB_API_TOKEN。")
+        finlab_token = finlab_token_input.strip() or configured_token
+        if configured_token_available and not finlab_token_input:
+            source = "Streamlit secrets" if secret_token else "環境變數 FINLAB_API_TOKEN"
+            st.caption(f"已偵測到 {source}。")
         quote_mode = st.selectbox(
             "現股報價來源",
             ["FinLab 優先", "只用 FinLab", "只用 yfinance"],
             index=0,
+        )
+        enable_backtest_strategy = st.toggle(
+            "啟用強勢續拉策略標記",
+            value=True,
+            help="使用回測條件：市值>=80億、掛牌前20交易日漲幅>=20%、事件溢價>=2%、5日量比<=2、掛牌日量比<=1。",
         )
         use_google = st.toggle("啟用 Google News 關鍵字 RSS", value=True)
         extra_feeds = st.text_area(
@@ -884,8 +1571,13 @@ def main() -> None:
         official_df = ensure_columns(official_df).head(int(max_official_rows))
         combined = pd.concat([new_df, official_df], ignore_index=True)
         dashboard_df, quote_issues = enrich_with_quotes(combined, finlab_token=finlab_token, quote_mode=quote_mode)
+        dashboard_df, strategy_issues = apply_backtest_strategy(
+            dashboard_df,
+            finlab_token=finlab_token,
+            enabled=enable_backtest_strategy,
+        )
 
-    render_warnings(news_issues + official_issues + quote_issues)
+    render_warnings(news_issues + official_issues + quote_issues + strategy_issues)
 
     new_count = int((dashboard_df["標記"] == "新定價案").sum()) if "標記" in dashboard_df.columns else 0
     st.caption(
@@ -894,7 +1586,7 @@ def main() -> None:
     )
 
     st.subheader("監控總覽")
-    control_cols = st.columns([2.2, 1.25, 1.65, 1.35])
+    control_cols = st.columns([2.0, 1.05, 1.65, 1.55, 1.25])
     with control_cols[0]:
         search_text = st.text_input(
             "搜尋",
@@ -904,15 +1596,28 @@ def main() -> None:
     with control_cols[1]:
         tag_filter = st.multiselect("標記", ["全部", "新定價案", "已掛牌"], default=["全部"])
     with control_cols[2]:
+        strategy_filter = st.multiselect(
+            "策略訊號",
+            [
+                "全部",
+                STRATEGY_SIGNAL_STRONG,
+                STRATEGY_SIGNAL_CANDIDATE,
+                STRATEGY_SIGNAL_OVERHEAT,
+                STRATEGY_SIGNAL_PRESSURE,
+                STRATEGY_SIGNAL_NORMAL,
+            ],
+            default=["全部"],
+        )
+    with control_cols[3]:
         class_filter = st.multiselect(
             "分類",
             ["全部", "🚀 拉抬攻擊", "🟦 疑似壓價", "⚪ 暫無報價", "⏳ 觀察標的"],
             default=["全部"],
         )
-    with control_cols[3]:
+    with control_cols[4]:
         quote_filter = st.multiselect("報價來源", ["全部", "FinLab", "yfinance"], default=["全部"])
 
-    filtered_df = filter_dashboard(dashboard_df, search_text, tag_filter, class_filter, quote_filter)
+    filtered_df = filter_dashboard(dashboard_df, search_text, tag_filter, class_filter, strategy_filter, quote_filter)
     render_status_chips(dashboard_df, filtered_df)
 
     render_metrics(filtered_df)
@@ -925,6 +1630,7 @@ def main() -> None:
         height=640,
         column_config={
             "標記": st.column_config.TextColumn("標記", width="small"),
+            "策略訊號": st.column_config.TextColumn("策略訊號", width="medium"),
             "分類": st.column_config.TextColumn("分類", width="medium"),
             "CB代碼": st.column_config.TextColumn("CB代碼", width="small"),
             "CB名稱": st.column_config.TextColumn("CB名稱", width="medium"),
@@ -935,6 +1641,26 @@ def main() -> None:
             "現股價格": st.column_config.NumberColumn("現股價格", format="%.2f"),
             "轉換價值": st.column_config.NumberColumn("轉換價值", format="%.2f"),
             "溢折價率": st.column_config.NumberColumn("溢折價率", format="%.2f%%"),
+            "市值(億)": st.column_config.NumberColumn("市值(億)", format="%.2f"),
+            "事件溢價率": st.column_config.NumberColumn("事件溢價率", format="%.2f%%"),
+            "掛牌前20交易日漲幅": st.column_config.NumberColumn("掛牌前20交易日漲幅", format="%.2f%%"),
+            "5日量比": st.column_config.NumberColumn("5日量比", format="%.2f"),
+            "掛牌日量比": st.column_config.NumberColumn("掛牌日量比", format="%.2f"),
+            "Day起算日": st.column_config.TextColumn("Day起算日", width="small"),
+            "事件日來源": st.column_config.TextColumn("事件日來源", width="small"),
+            "定價公告日": st.column_config.TextColumn("定價公告日", width="small"),
+            "預計掛牌日": st.column_config.TextColumn("預計掛牌日", width="small"),
+            "目前Day": st.column_config.NumberColumn("目前Day", format="%d"),
+            "目前Day顯示": st.column_config.TextColumn("目前Day", width="small"),
+            "買進時機": st.column_config.TextColumn("買進時機", width="medium"),
+            "掛牌前後階段": st.column_config.TextColumn("掛牌前後階段", width="medium"),
+            "回測樣本數": st.column_config.NumberColumn("回測樣本數", format="%d"),
+            "回測勝率": st.column_config.NumberColumn("回測勝率", format="%.2f%%"),
+            "回測中位數": st.column_config.NumberColumn("回測中位數", format="%.2f%%"),
+            "回測平均報酬": st.column_config.NumberColumn("回測平均報酬", format="%.2f%%"),
+            "回測平均最大不利": st.column_config.NumberColumn("回測平均最大不利", format="%.2f%%"),
+            "策略錨定日": st.column_config.TextColumn("策略錨定日", width="small"),
+            "策略備註": st.column_config.TextColumn("策略備註", width="large"),
             "上市日期": st.column_config.TextColumn("上市日期", width="small"),
             "到期日期": st.column_config.TextColumn("到期日期", width="small"),
             "重訊連結": st.column_config.LinkColumn("重訊連結"),
@@ -953,6 +1679,86 @@ def main() -> None:
 
             溢折價率 = `((現股價格 / 轉換價) - 1) * 100%`
             """
+        )
+
+    with st.expander("強勢續拉策略條件"):
+        st.markdown(
+            """
+            這組條件來自 CB 掛牌事件回測。回測參數為 `--start-year 2019`，
+            TPEx 有效回測樣本區間為 `2021-07-27` 至 `2026-06-18`，共 371 筆；
+            最佳嚴格條件樣本為 `2024-07-01` 至 `2026-05-29`，共 12 筆。
+
+            - 🔥 強勢續拉型：市值 >= 80 億、掛牌前 20 交易日漲幅 >= 20%、事件溢價率 >= 2%、5 日量比 <= 2、掛牌日量比 <= 1。
+            - 🟡 強勢續拉候選：新定價案或尚未完成掛牌日資料，已符合市值、動能、轉換價差與 5 日量比條件。
+            - ⚠️ 過熱出貨疑慮：動能與價差符合，但 5 日量比 > 2 或掛牌日量比 > 1。
+            - 🟦 壓價觀察型：事件溢價率介於 -12% 到 2%，偏向轉換價附近觀察。
+
+            `目前Day` 是交易日計算：Day 0 為 Day 起算日後第一個可交易日，可直接對應回測的 T+10、T+20。
+            若掛牌日在未來，`目前Day` 會顯示為 T-10、T-5 等掛牌前交易日。
+            已掛牌標的的 Day 起算日使用上市/掛牌日；新定價案若爬到預計掛牌日，會優先用預計掛牌日，
+            爬不到才退回定價公告日，並以 `事件日來源` 標示。
+            因此新定價案若顯示 T-5，代表距預計掛牌約 5 個交易日；若顯示 T+3 且來源為定價公告日，
+            代表定價公告已發生 3 個交易日，不代表 CB 已掛牌。
+            策略錨定日：已掛牌標的使用掛牌日後第一個交易日；新定價案或未完成掛牌資料使用最新可得交易日。
+            """
+        )
+
+    with st.expander("買進時機回測機率"):
+        st.markdown(
+            """
+            下表使用「強勢續拉型」12 筆樣本，假設在指定 Day 買進，固定於 T+20 出場。
+            T+20 本身是固定觀察出場點，買進日與出場日相同會機械性得到 0%，因此不列入買進統計。
+            表格中的最大不利為買進後到 T+20 前的平均最大不利報酬，用來衡量洗盤壓力。
+
+            - T+0~T+3：早期觀察，不重倉。
+            - T+4~T+8：洗盤確認期。
+            - T+9~T+11：最佳切入窗。
+            - T+12~T+19：續拉/停利窗。
+            - T+20：固定觀察出場點，不列為買點。
+            - T+20 後：不追，改看續航。
+            """
+        )
+
+    with st.expander("掛牌前交易回測"):
+        st.markdown(
+            """
+            下表測試「掛牌日前 N 個交易日買進，掛牌日 T+0 出場」。
+            全樣本較接近可交易基準；強勢續拉型樣本是型態參考，因為它使用掛牌日條件篩選，存在未來資訊偏誤。
+
+            實務解讀：
+            - T-20~T-11：預先反應早段，報酬最大但較難提前確認。
+            - T-10~T-5：預掛牌強勢窗。
+            - T-3~T-1：太接近掛牌，歷史優勢快速下降。
+            """
+        )
+        st.dataframe(
+            prelisting_backtest_table(),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "樣本": st.column_config.TextColumn("樣本", width="medium"),
+                "買進日": st.column_config.NumberColumn("買進日", format="T%d"),
+                "出場日": st.column_config.NumberColumn("出場日", format="T+%d"),
+                "樣本數": st.column_config.NumberColumn("樣本數", format="%d"),
+                "平均報酬": st.column_config.NumberColumn("平均報酬", format="%.2f%%"),
+                "中位數": st.column_config.NumberColumn("中位數", format="%.2f%%"),
+                "勝率": st.column_config.NumberColumn("勝率", format="%.2f%%"),
+                "備註": st.column_config.TextColumn("備註", width="large"),
+            },
+        )
+        st.dataframe(
+            entry_day_backtest_table(),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "目前Day": st.column_config.NumberColumn("目前Day", format="T+%d"),
+                "買進時機": st.column_config.TextColumn("買進時機", width="medium"),
+                "樣本數": st.column_config.NumberColumn("樣本數", format="%d"),
+                "平均報酬": st.column_config.NumberColumn("平均報酬", format="%.2f%%"),
+                "中位數": st.column_config.NumberColumn("中位數", format="%.2f%%"),
+                "勝率": st.column_config.NumberColumn("勝率", format="%.2f%%"),
+                "平均最大不利": st.column_config.NumberColumn("平均最大不利", format="%.2f%%"),
+            },
         )
 
 
