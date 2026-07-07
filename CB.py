@@ -57,6 +57,7 @@ DISPLAY_COLUMNS = [
     "市值(億)",
     "事件溢價率",
     "掛牌前20交易日漲幅",
+    "20日動能錨點",
     "5日量比",
     "掛牌日量比",
     "Day起算日",
@@ -125,26 +126,26 @@ STRONG_PRELISTING_BACKTEST_STATS = {
     -1: {"events": 12, "avg": 2.25, "median": -0.18, "win": 50.00},
 }
 ENTRY_DAY_BACKTEST_STATS = {
-    0: {"events": 12, "avg": 20.43, "median": 11.51, "win": 83.33, "mae": -7.09},
-    1: {"events": 12, "avg": 18.77, "median": 8.95, "win": 83.33, "mae": -6.60},
-    2: {"events": 12, "avg": 15.69, "median": 9.51, "win": 75.00, "mae": -8.70},
-    3: {"events": 12, "avg": 15.76, "median": 8.18, "win": 58.33, "mae": -8.74},
-    4: {"events": 12, "avg": 15.01, "median": 10.93, "win": 75.00, "mae": -9.19},
-    5: {"events": 12, "avg": 15.81, "median": 9.96, "win": 75.00, "mae": -8.72},
-    6: {"events": 12, "avg": 12.78, "median": 8.45, "win": 75.00, "mae": -9.68},
-    7: {"events": 12, "avg": 9.80, "median": 6.33, "win": 66.67, "mae": -10.74},
-    8: {"events": 12, "avg": 8.91, "median": 10.29, "win": 66.67, "mae": -10.98},
-    9: {"events": 12, "avg": 12.13, "median": 15.74, "win": 66.67, "mae": -8.35},
-    10: {"events": 12, "avg": 11.79, "median": 16.22, "win": 66.67, "mae": -7.71},
-    11: {"events": 12, "avg": 12.04, "median": 18.84, "win": 66.67, "mae": -6.49},
-    12: {"events": 12, "avg": 9.75, "median": 10.26, "win": 58.33, "mae": -6.01},
-    13: {"events": 12, "avg": 7.77, "median": 6.52, "win": 66.67, "mae": -5.81},
-    14: {"events": 12, "avg": 6.53, "median": 7.36, "win": 66.67, "mae": -6.14},
-    15: {"events": 12, "avg": 5.88, "median": 6.57, "win": 66.67, "mae": -5.27},
-    16: {"events": 12, "avg": 3.21, "median": 1.77, "win": 50.00, "mae": -5.39},
-    17: {"events": 12, "avg": 3.45, "median": 2.67, "win": 58.33, "mae": -3.91},
-    18: {"events": 12, "avg": 3.72, "median": 4.35, "win": 75.00, "mae": -2.10},
-    19: {"events": 12, "avg": 2.91, "median": 2.74, "win": 83.33, "mae": -0.67},
+    0: {"events": 12, "avg": 20.43, "median": 11.51, "win": 83.33, "mae": -7.09, "dd5": 41.67, "dd10": 25.00},
+    1: {"events": 12, "avg": 18.77, "median": 8.95, "win": 83.33, "mae": -6.60, "dd5": 41.67, "dd10": 33.33},
+    2: {"events": 12, "avg": 15.69, "median": 9.51, "win": 75.00, "mae": -8.70, "dd5": 58.33, "dd10": 33.33},
+    3: {"events": 12, "avg": 15.76, "median": 8.18, "win": 58.33, "mae": -8.74, "dd5": 66.67, "dd10": 25.00},
+    4: {"events": 12, "avg": 15.01, "median": 10.93, "win": 75.00, "mae": -9.19, "dd5": 50.00, "dd10": 41.67},
+    5: {"events": 12, "avg": 15.81, "median": 9.96, "win": 75.00, "mae": -8.72, "dd5": 33.33, "dd10": 33.33},
+    6: {"events": 12, "avg": 12.78, "median": 8.45, "win": 75.00, "mae": -9.68, "dd5": 66.67, "dd10": 41.67},
+    7: {"events": 12, "avg": 9.80, "median": 6.33, "win": 66.67, "mae": -10.74, "dd5": 75.00, "dd10": 50.00},
+    8: {"events": 12, "avg": 8.91, "median": 10.29, "win": 66.67, "mae": -10.98, "dd5": 66.67, "dd10": 50.00},
+    9: {"events": 12, "avg": 12.13, "median": 15.74, "win": 66.67, "mae": -8.35, "dd5": 58.33, "dd10": 33.33},
+    10: {"events": 12, "avg": 11.79, "median": 16.22, "win": 66.67, "mae": -7.71, "dd5": 41.67, "dd10": 33.33},
+    11: {"events": 12, "avg": 12.04, "median": 18.84, "win": 66.67, "mae": -6.49, "dd5": 50.00, "dd10": 25.00},
+    12: {"events": 12, "avg": 9.75, "median": 10.26, "win": 58.33, "mae": -6.01, "dd5": 50.00, "dd10": 25.00},
+    13: {"events": 12, "avg": 7.77, "median": 6.52, "win": 66.67, "mae": -5.81, "dd5": 50.00, "dd10": 25.00},
+    14: {"events": 12, "avg": 6.53, "median": 7.36, "win": 66.67, "mae": -6.14, "dd5": 41.67, "dd10": 41.67},
+    15: {"events": 12, "avg": 5.88, "median": 6.57, "win": 66.67, "mae": -5.27, "dd5": 41.67, "dd10": 33.33},
+    16: {"events": 12, "avg": 3.21, "median": 1.77, "win": 50.00, "mae": -5.39, "dd5": 41.67, "dd10": 25.00},
+    17: {"events": 12, "avg": 3.45, "median": 2.67, "win": 58.33, "mae": -3.91, "dd5": 41.67, "dd10": 0.00},
+    18: {"events": 12, "avg": 3.72, "median": 4.35, "win": 75.00, "mae": -2.10, "dd5": 16.67, "dd10": 0.00},
+    19: {"events": 12, "avg": 2.91, "median": 2.74, "win": 83.33, "mae": -0.67, "dd5": 0.00, "dd10": 0.00},
 }
 
 HTTP_HEADERS = {
@@ -890,6 +891,7 @@ def fetch_finlab_strategy_factors(
             "市值(億)": market_cap_yi,
             "事件溢價率": event_gap,
             "掛牌前20交易日漲幅": pre_20d_return,
+            "20日動能錨點": anchor_type,
             "5日量比": pre_5d_volume_ratio,
             "掛牌日量比": event_volume_ratio,
             "Day起算日": event_trade_date.strftime("%Y-%m-%d") if pd.notna(event_trade_date) else "",
@@ -997,12 +999,14 @@ def classify_backtest_strategy(row: pd.Series) -> tuple[str, str, int]:
     pre_volume_ok = pass_max(row.get("5日量比"), 2)
     event_volume_ok = pass_max(row.get("掛牌日量比"), 1)
     completed_listing = bool(row.get("完整掛牌事件", False))
+    anchor_type = str(row.get("20日動能錨點") or row.get("策略錨定類型") or "")
+    momentum_label = "掛牌前20交易日漲幅>=20%" if completed_listing else "近20交易日動能>=20%"
     day_text = format_event_day(row.get("目前Day"))
     day_note = event_day_window_note(row.get("目前Day"))
 
     base_checks = [
         ("市值>=80億", market_ok),
-        ("掛牌前20交易日漲幅>=20%", momentum_ok),
+        (momentum_label, momentum_ok),
         ("事件溢價>=2%", gap_ok),
         ("5日量比<=2", pre_volume_ok),
     ]
@@ -1012,7 +1016,8 @@ def classify_backtest_strategy(row: pd.Series) -> tuple[str, str, int]:
         return STRATEGY_SIGNAL_STRONG, f"完整命中回測條件；目前 {day_text}，{day_note}", 0
 
     if market_ok and momentum_ok and gap_ok and pre_volume_ok and not completed_listing:
-        return STRATEGY_SIGNAL_CANDIDATE, f"尚無完整掛牌日量比；目前 {day_text}，等待掛牌後確認。", 1
+        anchor_note = "目前用最新交易日作為候選觀察錨點" if anchor_type == "候選觀察日" else "目前用預計掛牌日/事件日附近作為候選錨點"
+        return STRATEGY_SIGNAL_CANDIDATE, f"新案只屬預警，不等於完整回測命中；{anchor_note}，目前 {day_text}，等待預計掛牌日與掛牌日量比確認。", 1
 
     if momentum_ok and gap_ok and (pass_gt(row.get("5日量比"), 2) or pass_gt(row.get("掛牌日量比"), 1)):
         return STRATEGY_SIGNAL_OVERHEAT, "動能與價差符合，但量能偏熱，需防追高或事件日出貨。", 2
@@ -1044,6 +1049,7 @@ def apply_backtest_strategy(
         "市值(億)",
         "事件溢價率",
         "掛牌前20交易日漲幅",
+        "20日動能錨點",
         "5日量比",
         "掛牌日量比",
         "目前Day",
@@ -1491,6 +1497,8 @@ def entry_day_backtest_table() -> pd.DataFrame:
                 "中位數": stats["median"],
                 "勝率": stats["win"],
                 "平均最大不利": stats["mae"],
+                "回撤<=-5%機率": stats.get("dd5", float("nan")),
+                "回撤<=-10%機率": stats.get("dd10", float("nan")),
             }
         )
     return pd.DataFrame(rows).sort_values("目前Day")
@@ -1499,8 +1507,7 @@ def entry_day_backtest_table() -> pd.DataFrame:
 def prelisting_backtest_table() -> pd.DataFrame:
     rows = []
     for dataset_name, stats_map, note in (
-        ("全樣本", PRELISTING_BACKTEST_STATS, "掛牌日前買進，掛牌日出場"),
-        ("強勢續拉型樣本", STRONG_PRELISTING_BACKTEST_STATS, "探索性型態參考，含掛牌日條件偏誤"),
+        ("全樣本", PRELISTING_BACKTEST_STATS, "不使用掛牌前20日漲幅條件；掛牌日前買進，掛牌日出場"),
     ):
         for day, stats in stats_map.items():
             rows.append(
@@ -1546,7 +1553,7 @@ def main() -> None:
         enable_backtest_strategy = st.toggle(
             "啟用強勢續拉策略標記",
             value=True,
-            help="使用回測條件：市值>=80億、掛牌前20交易日漲幅>=20%、事件溢價>=2%、5日量比<=2、掛牌日量比<=1。",
+            help="已掛牌標的使用完整回測條件；新公告只做候選預警，20日動能以目前可得資料計算。",
         )
         use_google = st.toggle("啟用 Google News 關鍵字 RSS", value=True)
         extra_feeds = st.text_area(
@@ -1644,6 +1651,7 @@ def main() -> None:
             "市值(億)": st.column_config.NumberColumn("市值(億)", format="%.2f"),
             "事件溢價率": st.column_config.NumberColumn("事件溢價率", format="%.2f%%"),
             "掛牌前20交易日漲幅": st.column_config.NumberColumn("掛牌前20交易日漲幅", format="%.2f%%"),
+            "20日動能錨點": st.column_config.TextColumn("20日動能錨點", width="small"),
             "5日量比": st.column_config.NumberColumn("5日量比", format="%.2f"),
             "掛牌日量比": st.column_config.NumberColumn("掛牌日量比", format="%.2f"),
             "Day起算日": st.column_config.TextColumn("Day起算日", width="small"),
@@ -1688,8 +1696,8 @@ def main() -> None:
             TPEx 有效回測樣本區間為 `2021-07-27` 至 `2026-06-18`，共 371 筆；
             最佳嚴格條件樣本為 `2024-07-01` 至 `2026-05-29`，共 12 筆。
 
-            - 🔥 強勢續拉型：市值 >= 80 億、掛牌前 20 交易日漲幅 >= 20%、事件溢價率 >= 2%、5 日量比 <= 2、掛牌日量比 <= 1。
-            - 🟡 強勢續拉候選：新定價案或尚未完成掛牌日資料，已符合市值、動能、轉換價差與 5 日量比條件。
+            - 🔥 強勢續拉型：只適用已掛牌事件。條件為市值 >= 80 億、掛牌日前 20 交易日漲幅 >= 20%、事件溢價率 >= 2%、5 日量比 <= 2、掛牌日量比 <= 1。
+            - 🟡 強勢續拉候選：只作為新公告預警。新定價案尚未完整知道掛牌日量比，若也缺預計掛牌日，20 日動能會以最新交易日作為候選觀察錨點。
             - ⚠️ 過熱出貨疑慮：動能與價差符合，但 5 日量比 > 2 或掛牌日量比 > 1。
             - 🟦 壓價觀察型：事件溢價率介於 -12% 到 2%，偏向轉換價附近觀察。
 
@@ -1700,6 +1708,8 @@ def main() -> None:
             因此新定價案若顯示 T-5，代表距預計掛牌約 5 個交易日；若顯示 T+3 且來源為定價公告日，
             代表定價公告已發生 3 個交易日，不代表 CB 已掛牌。
             策略錨定日：已掛牌標的使用掛牌日後第一個交易日；新定價案或未完成掛牌資料使用最新可得交易日。
+            因此若目標是掛牌前 T-20 進場，不能用「掛牌日前 20 交易日漲幅 >= 20%」當事前篩選；
+            那是掛牌日回看才知道的條件。新公告階段只能用「截至今天的近 20 交易日動能」做預警。
             """
         )
 
@@ -1708,7 +1718,9 @@ def main() -> None:
             """
             下表使用「強勢續拉型」12 筆樣本，假設在指定 Day 買進，固定於 T+20 出場。
             T+20 本身是固定觀察出場點，買進日與出場日相同會機械性得到 0%，因此不列入買進統計。
-            表格中的最大不利為買進後到 T+20 前的平均最大不利報酬，用來衡量洗盤壓力。
+            這張表只適合用在掛牌日條件確認後的 T+0 之後買進；若要掛牌前 T-20 買，不能使用這組事後篩選。
+            表格中的最大不利為買進後到 T+20 前的平均最大不利報酬，回撤機率則統計期間內曾跌破 -5% 或 -10% 的比例。
+            勝率若出現相同值，通常是因為樣本只有 12 筆，1 筆事件就等於 8.33 個百分點。
 
             - T+0~T+3：早期觀察，不重倉。
             - T+4~T+8：洗盤確認期。
@@ -1723,7 +1735,8 @@ def main() -> None:
         st.markdown(
             """
             下表測試「掛牌日前 N 個交易日買進，掛牌日 T+0 出場」。
-            全樣本較接近可交易基準；強勢續拉型樣本是型態參考，因為它使用掛牌日條件篩選，存在未來資訊偏誤。
+            這裡只保留全樣本，不加入「掛牌前 20 交易日漲幅 >= 20%」條件，避免用掛牌日才知道的資訊回頭篩選 T-20 買點。
+            但若 T-20 當天尚未有 CB 定價公告，這仍是事件研究，不等於可直接執行的公告日策略。
 
             實務解讀：
             - T-20~T-11：預先反應早段，報酬最大但較難提前確認。
@@ -1758,6 +1771,8 @@ def main() -> None:
                 "中位數": st.column_config.NumberColumn("中位數", format="%.2f%%"),
                 "勝率": st.column_config.NumberColumn("勝率", format="%.2f%%"),
                 "平均最大不利": st.column_config.NumberColumn("平均最大不利", format="%.2f%%"),
+                "回撤<=-5%機率": st.column_config.NumberColumn("回撤<=-5%機率", format="%.2f%%"),
+                "回撤<=-10%機率": st.column_config.NumberColumn("回撤<=-10%機率", format="%.2f%%"),
             },
         )
 
