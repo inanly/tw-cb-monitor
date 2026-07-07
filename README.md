@@ -68,6 +68,10 @@ GitHub Actions workflow：`.github/workflows/cb-line-alert.yml`
 
 排程時間：每天台灣時間 17:00。
 
+掛牌名單來源：櫃買中心「最近上櫃轉(交)換公司債」即時頁面。
+
+轉換價來源：優先用 TPEx OpenAPI 補齊，若缺值則嘗試讀取該頁提供的 MOPS 發行資料連結。
+
 GitHub repo 需設定 Secrets：
 
 ```text

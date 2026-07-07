@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import time
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -22,6 +24,7 @@ except Exception:
 
 
 TPEX_CB_URL = "https://www.tpex.org.tw/openapi/v1/bond_ISSBD5_data"
+TPEX_RECENT_CB_LISTED_URL = "https://www.tpex.org.tw/www/zh-tw/bond/convSearch"
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
 TAIPEI_TZ = ZoneInfo("Asia/Taipei")
 HEADERS = {
@@ -57,10 +60,48 @@ def parse_yyyymmdd(value: Any) -> pd.Timestamp:
         return pd.NaT
 
 
+def parse_roc_date(value: Any) -> pd.Timestamp:
+    text = str(value or "").strip()
+    match = re.search(r"(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})", text)
+    if not match:
+        return pd.NaT
+    year = int(match.group(1))
+    if year < 1911:
+        year += 1911
+    try:
+        return pd.Timestamp(year=year, month=int(match.group(2)), day=int(match.group(3)))
+    except ValueError:
+        return pd.NaT
+
+
 def parse_target_date(value: str | None) -> pd.Timestamp:
     if value:
         return pd.Timestamp(value).normalize()
     return pd.Timestamp(datetime.now(TAIPEI_TZ).date())
+
+
+def extract_query_value(url: str, key: str) -> str:
+    try:
+        values = parse_qs(urlparse(url).query).get(key, [])
+        return str(values[0]).strip() if values else ""
+    except Exception:
+        return ""
+
+
+def extract_mops_conversion_price(text: str) -> float:
+    cleaned = re.sub(r"\s+", " ", text)
+    patterns = [
+        r"發行時轉\(交\)換價格[：:\s]*([0-9,]+(?:\.\d+)?)\s*元",
+        r"最新轉\(交\)換價格[：:\s]*([0-9,]+(?:\.\d+)?)\s*元",
+        r"轉\(交\)換價格[：:\s]*([0-9,]+(?:\.\d+)?)\s*元",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, cleaned)
+        if match:
+            price = clean_float(match.group(1))
+            if price > 0:
+                return price
+    return 0.0
 
 
 def fetch_tpex_cb_events() -> pd.DataFrame:
@@ -101,6 +142,102 @@ def fetch_tpex_cb_events() -> pd.DataFrame:
         )
 
     return pd.DataFrame(rows)
+
+
+def fetch_tpex_recent_listed_cb_events() -> pd.DataFrame:
+    payload = {"name": "bondIssuer", "searchNo": "", "response": "json"}
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                TPEX_RECENT_CB_LISTED_URL,
+                data=payload,
+                headers=HEADERS,
+                timeout=45,
+                verify=False,
+            )
+            response.raise_for_status()
+            raw = response.json()
+            break
+        except Exception as exc:
+            last_error = exc
+            time.sleep(2 * (attempt + 1))
+    else:
+        raise RuntimeError(f"TPEx recent listed CB API failed after retries: {last_error}") from last_error
+
+    table = (raw.get("tables") or [{}])[0]
+    fields = table.get("fields") or []
+    rows: list[dict[str, Any]] = []
+    for item in table.get("data") or []:
+        if not isinstance(item, list) or len(item) < len(fields):
+            continue
+        row = dict(zip(fields, item))
+        stock_code = str(row.get("發行機構代碼", "")).strip()
+        issue_link = str(row.get("發行資料", "")).strip()
+        cb_code = extract_query_value(issue_link, "bond_id")
+        listing_date = parse_roc_date(row.get("掛牌日期", ""))
+        if not cb_code or not stock_code.isdigit() or len(stock_code) != 4 or pd.isna(listing_date):
+            continue
+        rows.append(
+            {
+                "cb_code": cb_code,
+                "cb_name": str(row.get("債券名稱") or cb_code).strip(),
+                "stock_code": stock_code,
+                "issuer": str(row.get("發行機構名稱", "")).strip(),
+                "listing_date": listing_date,
+                "conversion_price": float("nan"),
+                "issue_link": issue_link,
+                "listing_source": "TPEx最近上櫃頁",
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows).drop_duplicates(subset=["cb_code", "stock_code", "listing_date"])
+
+
+def fetch_mops_conversion_price(url: str) -> float:
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=30)
+        response.raise_for_status()
+    except Exception:
+        return 0.0
+    text = re.sub(r"<[^>]+>", " ", response.text)
+    return extract_mops_conversion_price(text)
+
+
+def fill_conversion_prices_from_master(events: pd.DataFrame) -> pd.DataFrame:
+    if events.empty:
+        return events
+    result = events.copy()
+
+    try:
+        master = fetch_tpex_cb_events()
+    except Exception:
+        master = pd.DataFrame()
+
+    if not master.empty:
+        master_lookup = master.drop_duplicates("cb_code").set_index("cb_code")
+        for idx, row in result.iterrows():
+            cb_code = str(row.get("cb_code", ""))
+            if cb_code not in master_lookup.index:
+                continue
+            master_row = master_lookup.loc[cb_code]
+            if not is_number(result.at[idx, "conversion_price"]) or float(result.at[idx, "conversion_price"]) <= 0:
+                result.at[idx, "conversion_price"] = float(master_row.get("conversion_price", float("nan")))
+            if not str(result.at[idx].get("cb_name", "")).strip():
+                result.at[idx, "cb_name"] = str(master_row.get("cb_name", ""))
+            if not str(result.at[idx].get("issuer", "")).strip():
+                result.at[idx, "issuer"] = str(master_row.get("issuer", ""))
+
+    issue_links = result["issue_link"] if "issue_link" in result.columns else pd.Series("", index=result.index)
+    missing = result[(~pd.to_numeric(result["conversion_price"], errors="coerce").gt(0)) & issue_links.astype(str).str.startswith("http")]
+    for idx, row in missing.iterrows():
+        price = fetch_mops_conversion_price(str(row.get("issue_link", "")))
+        if price > 0:
+            result.at[idx, "conversion_price"] = price
+
+    return result
 
 
 def finlab_wide_to_pandas(frame: Any) -> pd.DataFrame:
@@ -346,7 +483,7 @@ def main() -> int:
     target_date = parse_target_date(args.date or None)
     send_no_match = args.send_no_match or truthy_env("LINE_SEND_NO_MATCH")
 
-    events = fetch_tpex_cb_events()
+    events = fetch_tpex_recent_listed_cb_events()
     todays = events[events["listing_date"].dt.normalize() == target_date].copy() if not events.empty else pd.DataFrame()
     if todays.empty:
         message = build_message(target_date, 0, pd.DataFrame(), [], send_no_match)
@@ -358,6 +495,7 @@ def main() -> int:
             print(f"{target_date.date()} no CB listings; no LINE message sent.")
         return 0
 
+    todays = fill_conversion_prices_from_master(todays)
     result, issues = compute_listing_day_factors(todays, target_date, StrongConfig())
     message = build_message(target_date, len(todays), result, issues, send_no_match)
 
@@ -376,4 +514,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
