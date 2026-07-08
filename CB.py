@@ -871,7 +871,11 @@ def fetch_finlab_strategy_factors(
         else:
             event_date = publish_date
             event_source = "定價公告日"
-        has_completed_listing = pd.notna(listing_date) and listing_date <= latest_close_date and tag == "已掛牌"
+        has_completed_listing = (
+            pd.notna(listing_date)
+            and listing_date <= latest_close_date
+            and tag not in {"新定價案", "預計掛牌"}
+        )
 
         current_event_day = float("nan")
         event_trade_date = pd.NaT
@@ -1308,7 +1312,67 @@ def fetch_tpex_recent_listed_cb() -> tuple[pd.DataFrame, list[str]]:
     df = pd.DataFrame(rows)
     if not df.empty:
         df = df.drop_duplicates(subset=["股票代號", "預計掛牌日", "CB代碼"], keep="last")
-    return df, issues
+    return ensure_columns(df), issues
+
+
+def prepare_recent_listed_rows(recent_df: pd.DataFrame, official_df: pd.DataFrame) -> pd.DataFrame:
+    recent = ensure_columns(recent_df).copy()
+    if recent.empty:
+        return recent
+
+    official = ensure_columns(official_df).copy()
+    official_by_cb = pd.DataFrame()
+    if not official.empty and "CB代碼" in official.columns:
+        official_by_cb = official[official["CB代碼"].astype(str).str.strip() != ""].drop_duplicates("CB代碼").set_index("CB代碼")
+
+    today = pd.Timestamp(datetime.now().date())
+    for idx, row in recent.iterrows():
+        cb_code = normalize_cb_code(row.get("CB代碼", ""))
+        listing_date = parse_dashboard_date(row.get("預計掛牌日", ""))
+        is_future_listing = pd.notna(listing_date) and listing_date > today
+
+        if cb_code and not official_by_cb.empty and cb_code in official_by_cb.index:
+            official_row = official_by_cb.loc[cb_code]
+            if clean_number(recent.at[idx, "轉換價"]) <= 0:
+                recent.at[idx, "轉換價"] = clean_number(official_row.get("轉換價", 0))
+            for col in ("到期日期", "CB名稱"):
+                if not first_non_empty_text(recent.at[idx, col]):
+                    recent.at[idx, col] = official_row.get(col, "")
+
+        listing_text = format_dashboard_date(listing_date, empty_value="待查")
+        recent.at[idx, "上市日期"] = "待掛牌" if is_future_listing else listing_text
+        recent.at[idx, "預計掛牌日"] = listing_text
+        recent.at[idx, "標記"] = "預計掛牌" if is_future_listing else "近期掛牌"
+        recent.at[idx, "更新時間"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return ensure_columns(recent)
+
+
+def combine_dashboard_sources(new_df: pd.DataFrame, recent_df: pd.DataFrame, official_df: pd.DataFrame) -> pd.DataFrame:
+    combined = ensure_columns(pd.concat([new_df, recent_df, official_df], ignore_index=True))
+    if combined.empty:
+        return combined
+
+    combined["_source_priority"] = combined["標記"].map(
+        {
+            "新定價案": 0,
+            "預計掛牌": 1,
+            "近期掛牌": 2,
+            "已掛牌": 3,
+        }
+    ).fillna(9)
+    combined["_original_order"] = range(len(combined))
+    combined = combined.sort_values(["_source_priority", "_original_order"], ascending=[True, True])
+
+    has_cb_code = combined["CB代碼"].astype(str).str.strip().ne("") & combined["CB代碼"].astype(str).ne("待掛牌代碼")
+    with_cb = combined[has_cb_code].drop_duplicates(subset=["CB代碼"], keep="first")
+    without_cb = combined[~has_cb_code].drop_duplicates(subset=["股票代號", "預計掛牌日", "定價公告日"], keep="first")
+    result = pd.concat([with_cb, without_cb], ignore_index=True)
+    result = result.sort_values(["_source_priority", "_original_order"], ascending=[True, True]).drop(
+        columns=["_source_priority", "_original_order"],
+        errors="ignore",
+    )
+    return ensure_columns(result.reset_index(drop=True))
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -1491,7 +1555,8 @@ def enrich_with_quotes(df: pd.DataFrame, finlab_token: str = "", quote_mode: str
         axis=1,
     )
     df["分類"] = df.apply(lambda row: classify_row(float(row["現股價格"]), float(row["溢折價率"])), axis=1)
-    df["排序權重"] = df["標記"].map(lambda value: 0 if value == "新定價案" else 1)
+    tag_sort_order = {"新定價案": 0, "預計掛牌": 1, "近期掛牌": 2, "已掛牌": 3}
+    df["排序權重"] = df["標記"].map(tag_sort_order).fillna(9)
     class_order = {"🚀 拉抬攻擊": 0, "🟦 疑似壓價": 1, "⏳ 觀察標的": 2, "⚪ 暫無報價": 3}
     df["分類權重"] = df["分類"].map(class_order).fillna(9)
 
@@ -1610,6 +1675,7 @@ def render_status_chips(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
     total = len(df)
     visible = len(filtered_df)
     new_count = int((df["標記"] == "新定價案").sum()) if "標記" in df.columns else 0
+    recent_count = int(df["標記"].isin(["預計掛牌", "近期掛牌"]).sum()) if "標記" in df.columns else 0
     finlab_count = int((df["報價來源"] == "FinLab").sum()) if "報價來源" in df.columns else 0
     strong_count = int((df["策略訊號"] == STRATEGY_SIGNAL_STRONG).sum()) if "策略訊號" in df.columns else 0
     prelisting_count = int((df["買進時機"] == "預掛牌強勢窗").sum()) if "買進時機" in df.columns else 0
@@ -1619,6 +1685,7 @@ def render_status_chips(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
         <div class="cb-status">
             <span class="cb-chip">顯示 {visible} / {total} 筆</span>
             <span class="cb-chip">新定價案 {new_count} 筆</span>
+            <span class="cb-chip">櫃買近期/預計掛牌 {recent_count} 筆</span>
             <span class="cb-chip">強勢續拉型 {strong_count} 筆</span>
             <span class="cb-chip">預掛牌窗 {prelisting_count} 筆</span>
             <span class="cb-chip">最佳切入窗 {best_entry_count} 筆</span>
@@ -1721,10 +1788,12 @@ def main() -> None:
 
     with st.spinner("整合櫃買 OpenAPI、RSS 重訊與現股報價中..."):
         official_df, official_issues = fetch_tpex_cb()
+        recent_df, recent_issues = fetch_tpex_recent_listed_cb()
         new_df, news_issues = fetch_new_pricing_cases(tuple(feed_urls))
         new_df = ensure_columns(new_df)
+        recent_df = prepare_recent_listed_rows(recent_df, official_df)
         official_df = ensure_columns(official_df).head(int(max_official_rows))
-        combined = pd.concat([new_df, official_df], ignore_index=True)
+        combined = combine_dashboard_sources(new_df, recent_df, official_df)
         dashboard_df, quote_issues = enrich_with_quotes(combined, finlab_token=finlab_token, quote_mode=quote_mode)
         dashboard_df, strategy_issues = apply_backtest_strategy(
             dashboard_df,
@@ -1732,12 +1801,13 @@ def main() -> None:
             enabled=enable_backtest_strategy,
         )
 
-    render_warnings(news_issues + official_issues + quote_issues + strategy_issues)
+    render_warnings(news_issues + recent_issues + official_issues + quote_issues + strategy_issues)
 
     new_count = int((dashboard_df["標記"] == "新定價案").sum()) if "標記" in dashboard_df.columns else 0
+    recent_count = int(dashboard_df["標記"].isin(["預計掛牌", "近期掛牌"]).sum()) if "標記" in dashboard_df.columns else 0
     st.caption(
         f"更新時間：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}｜"
-        f"新定價案 {new_count} 筆已強制置頂｜官方掛牌庫 {len(official_df)} 筆"
+        f"新定價案 {new_count} 筆已強制置頂｜櫃買近期/預計掛牌 {recent_count} 筆｜官方掛牌庫 {len(official_df)} 筆"
     )
 
     st.subheader("監控總覽")
@@ -1749,7 +1819,14 @@ def main() -> None:
             label_visibility="collapsed",
         )
     with control_cols[1]:
-        tag_filter = st.multiselect("標記", ["全部", "新定價案", "已掛牌"], default=["全部"])
+        tag_options = ["全部"] + sorted(
+            {
+                str(value)
+                for value in dashboard_df["標記"].dropna().tolist()
+                if str(value).strip()
+            }
+        )
+        tag_filter = st.multiselect("標記", tag_options, default=["全部"])
     with control_cols[2]:
         strategy_filter = st.multiselect(
             "策略訊號",
