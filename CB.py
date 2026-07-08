@@ -11,6 +11,7 @@ import warnings
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, quote_plus, urlparse
+from zoneinfo import ZoneInfo
 
 import feedparser
 import pandas as pd
@@ -40,6 +41,9 @@ TPEX_OPENAPI_URL = "https://www.tpex.org.tw/openapi/v1/bond_ISSBD5_data"
 TPEX_RECENT_CB_LISTED_URL = "https://www.tpex.org.tw/www/zh-tw/bond/convSearch"
 TWSE_DAILY_QUOTES_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_DAILY_QUOTES_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
+TAIPEI_TZ = ZoneInfo("Asia/Taipei")
+DAILY_REFRESH_HOUR = 17
+DAILY_CACHE_TTL_SECONDS = 60 * 60 * 26
 KEYWORDS = ("公告", "轉換公司債", "轉換價格")
 REQUIRED_COLUMNS = ["CB代碼", "CB名稱", "股票代號", "轉換價", "標記"]
 DISPLAY_COLUMNS = [
@@ -171,6 +175,24 @@ HTTP_HEADERS = {
     "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     "Referer": "https://www.tpex.org.tw/",
 }
+
+
+def taipei_now() -> datetime:
+    return datetime.now(TAIPEI_TZ)
+
+
+def daily_refresh_key(now: datetime | None = None) -> str:
+    current = now or taipei_now()
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=TAIPEI_TZ)
+    cutoff = current.replace(hour=DAILY_REFRESH_HOUR, minute=0, second=0, microsecond=0)
+    batch_date = current.date() if current >= cutoff else (current - timedelta(days=1)).date()
+    return batch_date.isoformat()
+
+
+def daily_refresh_label(refresh_key: str) -> str:
+    return f"{refresh_key} {DAILY_REFRESH_HOUR:02d}:00 台北時間"
+
 
 FIELD_CANDIDATES = {
     "CB代碼": [
@@ -430,8 +452,8 @@ def collect_stock_catalog(payload: Any) -> dict[str, str]:
     return catalog
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_taiwan_stock_catalog() -> dict[str, str]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_taiwan_stock_catalog(refresh_key: str = "") -> dict[str, str]:
     catalog: dict[str, str] = {}
 
     for url in (TWSE_DAILY_QUOTES_URL, TPEX_DAILY_QUOTES_URL):
@@ -481,7 +503,7 @@ def is_new_pricing_case(text: str) -> bool:
     return is_keyword_hit(compact) and has_new_pricing_hint
 
 
-def extract_stock_identity(text: str) -> tuple[str, str]:
+def extract_stock_identity(text: str, refresh_key: str = "") -> tuple[str, str]:
     def clean_company_name(raw_name: str) -> str:
         name = raw_name.strip("-：:，,。 ")
         for separator in ("公告", "本公司", "公司"):
@@ -503,7 +525,7 @@ def extract_stock_identity(text: str) -> tuple[str, str]:
             return code, name
 
     try:
-        catalog = fetch_taiwan_stock_catalog()
+        catalog = fetch_taiwan_stock_catalog(refresh_key)
     except Exception:
         catalog = {}
 
@@ -532,8 +554,8 @@ def extract_conversion_price(text: str) -> float:
     return 0.0
 
 
-@st.cache_data(ttl=600, show_spinner=False)
-def fetch_article_text(url: str) -> str:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_article_text(url: str, refresh_key: str = "") -> str:
     if not url or "news.google.com" in url:
         return ""
 
@@ -568,8 +590,8 @@ def quiet_yfinance():
         yield
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_taiwan_market_code_sets() -> tuple[set[str], set[str]]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_taiwan_market_code_sets(refresh_key: str = "") -> tuple[set[str], set[str]]:
     twse_codes: set[str] = set()
     tpex_codes: set[str] = set()
 
@@ -587,13 +609,13 @@ def fetch_taiwan_market_code_sets() -> tuple[set[str], set[str]]:
     return twse_codes, tpex_codes
 
 
-def yfinance_suffix_candidates(stock_code: str) -> tuple[str, ...]:
+def yfinance_suffix_candidates(stock_code: str, refresh_key: str = "") -> tuple[str, ...]:
     code = normalize_stock_code(stock_code)
     if not code:
         return ()
 
     try:
-        twse_codes, tpex_codes = fetch_taiwan_market_code_sets()
+        twse_codes, tpex_codes = fetch_taiwan_market_code_sets(refresh_key)
     except Exception:
         twse_codes, tpex_codes = set(), set()
 
@@ -805,10 +827,11 @@ def strategy_records_from_df(df: pd.DataFrame) -> tuple[tuple[int, str, str, str
     return tuple(records)
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
 def fetch_finlab_strategy_factors(
     records: tuple[tuple[int, str, str, str, str, float, str], ...],
     token_key: str,
+    refresh_key: str = "",
 ) -> tuple[dict[int, dict[str, Any]], list[str]]:
     factors_by_idx: dict[int, dict[str, Any]] = {}
     issues: list[str] = []
@@ -1099,6 +1122,7 @@ def apply_backtest_strategy(
     df: pd.DataFrame,
     finlab_token: str = "",
     enabled: bool = True,
+    refresh_key: str = "",
 ) -> tuple[pd.DataFrame, list[str]]:
     df = ensure_columns(df).copy().reset_index(drop=True)
     issues: list[str] = []
@@ -1137,7 +1161,7 @@ def apply_backtest_strategy(
         return ensure_columns(df), issues
 
     records = strategy_records_from_df(df)
-    factors, factor_issues = fetch_finlab_strategy_factors(records, token_fingerprint(finlab_token))
+    factors, factor_issues = fetch_finlab_strategy_factors(records, token_fingerprint(finlab_token), refresh_key)
     issues.extend(factor_issues)
 
     for row_idx, factor_values in factors.items():
@@ -1168,8 +1192,12 @@ def apply_backtest_strategy(
     return ensure_columns(df), issues
 
 
-@st.cache_data(ttl=300, show_spinner=False)
-def fetch_finlab_latest_quotes(stock_codes: tuple[str, ...], token_key: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_finlab_latest_quotes(
+    stock_codes: tuple[str, ...],
+    token_key: str,
+    refresh_key: str = "",
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
     quotes: dict[str, dict[str, Any]] = {}
     issues: list[str] = []
 
@@ -1205,8 +1233,8 @@ def fetch_finlab_latest_quotes(stock_codes: tuple[str, ...], token_key: str) -> 
     return quotes, issues
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_tpex_cb() -> tuple[pd.DataFrame, list[str]]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_tpex_cb(refresh_key: str = "") -> tuple[pd.DataFrame, list[str]]:
     rows: list[dict[str, Any]] = []
     issues: list[str] = []
 
@@ -1264,8 +1292,8 @@ def fetch_tpex_cb() -> tuple[pd.DataFrame, list[str]]:
     return ensure_columns(df), issues
 
 
-@st.cache_data(ttl=600, show_spinner=False)
-def fetch_tpex_recent_listed_cb() -> tuple[pd.DataFrame, list[str]]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_tpex_recent_listed_cb(refresh_key: str = "") -> tuple[pd.DataFrame, list[str]]:
     rows: list[dict[str, Any]] = []
     issues: list[str] = []
     payload = {"name": "bondIssuer", "searchNo": "", "response": "json"}
@@ -1375,8 +1403,8 @@ def combine_dashboard_sources(new_df: pd.DataFrame, recent_df: pd.DataFrame, off
     return ensure_columns(result.reset_index(drop=True))
 
 
-@st.cache_data(ttl=600, show_spinner=False)
-def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, list[str]]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_new_pricing_cases(feed_urls: tuple[str, ...], refresh_key: str = "") -> tuple[pd.DataFrame, list[str]]:
     rows: list[dict[str, Any]] = []
     issues: list[str] = []
     seen: set[tuple[str, float, str]] = set()
@@ -1398,17 +1426,17 @@ def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, l
             if not is_potential_cb_pricing_text(full_text):
                 continue
 
-            stock_code, stock_name = extract_stock_identity(full_text)
+            stock_code, stock_name = extract_stock_identity(full_text, refresh_key)
             conversion_price = extract_conversion_price(full_text)
             expected_listing_date = extract_expected_listing_date(full_text, published_text)
 
             if not is_new_pricing_case(full_text) or not stock_code or conversion_price <= 0 or not expected_listing_date:
-                article_text = fetch_article_text(entry.get("link", ""))
+                article_text = fetch_article_text(entry.get("link", ""), refresh_key)
                 if article_text:
                     full_text = f"{full_text} {article_text}"
                     expected_listing_date = expected_listing_date or extract_expected_listing_date(full_text, published_text)
 
-            stock_code, stock_name = extract_stock_identity(full_text)
+            stock_code, stock_name = extract_stock_identity(full_text, refresh_key)
             conversion_price = extract_conversion_price(full_text)
             expected_listing_date = expected_listing_date or extract_expected_listing_date(full_text, published_text)
             if not is_new_pricing_case(full_text) or not stock_code or conversion_price <= 0:
@@ -1440,7 +1468,7 @@ def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, l
 
     df = pd.DataFrame(rows)
     if not df.empty:
-        recent_df, recent_issues = fetch_tpex_recent_listed_cb()
+        recent_df, recent_issues = fetch_tpex_recent_listed_cb(refresh_key)
         issues.extend(recent_issues)
         if not recent_df.empty:
             for idx, row in df.iterrows():
@@ -1473,13 +1501,13 @@ def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, l
     return ensure_columns(df), issues
 
 
-@st.cache_data(ttl=120, show_spinner=False)
-def fetch_stock_quote(stock_code: str) -> dict[str, Any]:
+@st.cache_data(ttl=DAILY_CACHE_TTL_SECONDS, show_spinner=False)
+def fetch_stock_quote(stock_code: str, refresh_key: str = "") -> dict[str, Any]:
     code = normalize_stock_code(stock_code)
     if not code:
         return {"現股價格": 0.0, "報價來源": "", "報價代碼": ""}
 
-    for suffix in yfinance_suffix_candidates(code):
+    for suffix in yfinance_suffix_candidates(code, refresh_key):
         symbol = f"{code}{suffix}"
         try:
             with quiet_yfinance():
@@ -1517,7 +1545,12 @@ def classify_row(price: float, premium_rate: float) -> str:
     return "⏳ 觀察標的"
 
 
-def enrich_with_quotes(df: pd.DataFrame, finlab_token: str = "", quote_mode: str = "FinLab 優先") -> tuple[pd.DataFrame, list[str]]:
+def enrich_with_quotes(
+    df: pd.DataFrame,
+    finlab_token: str = "",
+    quote_mode: str = "FinLab 優先",
+    refresh_key: str = "",
+) -> tuple[pd.DataFrame, list[str]]:
     df = ensure_columns(df).copy()
     quote_issues: list[str] = []
     if df.empty:
@@ -1533,7 +1566,7 @@ def enrich_with_quotes(df: pd.DataFrame, finlab_token: str = "", quote_mode: str
     if use_finlab:
         if finlab_token:
             os.environ["FINLAB_API_TOKEN"] = finlab_token
-            finlab_quotes, finlab_issues = fetch_finlab_latest_quotes(stock_codes, token_fingerprint(finlab_token))
+            finlab_quotes, finlab_issues = fetch_finlab_latest_quotes(stock_codes, token_fingerprint(finlab_token), refresh_key)
             quotes.update(finlab_quotes)
             quote_issues.extend(finlab_issues)
         else:
@@ -1541,7 +1574,7 @@ def enrich_with_quotes(df: pd.DataFrame, finlab_token: str = "", quote_mode: str
 
     missing_codes = [code for code in stock_codes if code not in quotes]
     if quote_mode != "只用 FinLab":
-        quotes.update({code: fetch_stock_quote(code) for code in missing_codes})
+        quotes.update({code: fetch_stock_quote(code, refresh_key) for code in missing_codes})
 
     df["現股價格"] = df["股票代號"].map(lambda code: quotes.get(code, {}).get("現股價格", 0.0)).fillna(0.0)
     df["報價來源"] = df["股票代號"].map(lambda code: quotes.get(code, {}).get("報價來源", "")).fillna("")
@@ -1743,9 +1776,13 @@ def tminus20_exit_rules_table() -> pd.DataFrame:
 def main() -> None:
     inject_custom_css()
     st.title("台灣可轉債 CB 戰術監控")
+    now_taipei = taipei_now()
+    refresh_key = daily_refresh_key(now_taipei)
 
     with st.sidebar:
         st.subheader("資料設定")
+        st.caption(f"每日資料批次：{daily_refresh_label(refresh_key)} 後")
+        st.caption("同一批次內共用快取；17:00 後首次開啟會抓新資料。")
         secret_token = read_secret_finlab_token()
         env_token = os.environ.get("FINLAB_API_TOKEN", "").strip()
         configured_token = secret_token or env_token
@@ -1787,18 +1824,24 @@ def main() -> None:
     feed_urls.extend([line.strip() for line in extra_feeds.splitlines() if line.strip()])
 
     with st.spinner("整合櫃買 OpenAPI、RSS 重訊與現股報價中..."):
-        official_df, official_issues = fetch_tpex_cb()
-        recent_df, recent_issues = fetch_tpex_recent_listed_cb()
-        new_df, news_issues = fetch_new_pricing_cases(tuple(feed_urls))
+        official_df, official_issues = fetch_tpex_cb(refresh_key)
+        recent_df, recent_issues = fetch_tpex_recent_listed_cb(refresh_key)
+        new_df, news_issues = fetch_new_pricing_cases(tuple(feed_urls), refresh_key)
         new_df = ensure_columns(new_df)
         recent_df = prepare_recent_listed_rows(recent_df, official_df)
         official_df = ensure_columns(official_df).head(int(max_official_rows))
         combined = combine_dashboard_sources(new_df, recent_df, official_df)
-        dashboard_df, quote_issues = enrich_with_quotes(combined, finlab_token=finlab_token, quote_mode=quote_mode)
+        dashboard_df, quote_issues = enrich_with_quotes(
+            combined,
+            finlab_token=finlab_token,
+            quote_mode=quote_mode,
+            refresh_key=refresh_key,
+        )
         dashboard_df, strategy_issues = apply_backtest_strategy(
             dashboard_df,
             finlab_token=finlab_token,
             enabled=enable_backtest_strategy,
+            refresh_key=refresh_key,
         )
 
     render_warnings(news_issues + recent_issues + official_issues + quote_issues + strategy_issues)
@@ -1806,7 +1849,8 @@ def main() -> None:
     new_count = int((dashboard_df["標記"] == "新定價案").sum()) if "標記" in dashboard_df.columns else 0
     recent_count = int(dashboard_df["標記"].isin(["預計掛牌", "近期掛牌"]).sum()) if "標記" in dashboard_df.columns else 0
     st.caption(
-        f"更新時間：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}｜"
+        f"畫面時間：{now_taipei.strftime('%Y-%m-%d %H:%M:%S')}｜"
+        f"資料批次：{daily_refresh_label(refresh_key)}｜"
         f"新定價案 {new_count} 筆已強制置頂｜櫃買近期/預計掛牌 {recent_count} 筆｜官方掛牌庫 {len(official_df)} 筆"
     )
 
