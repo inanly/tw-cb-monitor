@@ -10,7 +10,7 @@ import re
 import warnings
 from datetime import datetime, timedelta
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, urlparse
 
 import feedparser
 import pandas as pd
@@ -37,6 +37,7 @@ st.set_page_config(
 
 
 TPEX_OPENAPI_URL = "https://www.tpex.org.tw/openapi/v1/bond_ISSBD5_data"
+TPEX_RECENT_CB_LISTED_URL = "https://www.tpex.org.tw/www/zh-tw/bond/convSearch"
 TWSE_DAILY_QUOTES_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_DAILY_QUOTES_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
 KEYWORDS = ("公告", "轉換公司債", "轉換價格")
@@ -311,6 +312,26 @@ def format_taiwan_date(value: Any, empty_value: str = "") -> str:
         return str(value or empty_value).strip()
 
 
+def parse_roc_or_ad_date(value: Any) -> pd.Timestamp | pd.NaT:
+    text = str(value or "").strip()
+    match = re.search(r"(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})", text)
+    if match:
+        year = int(match.group(1))
+        if year < 1911:
+            year += 1911
+        try:
+            return pd.Timestamp(year=year, month=int(match.group(2)), day=int(match.group(3)))
+        except ValueError:
+            return pd.NaT
+
+    formatted = format_taiwan_date(value)
+    if formatted:
+        parsed = pd.to_datetime(formatted, errors="coerce")
+        if pd.notna(parsed):
+            return pd.Timestamp(parsed)
+    return pd.NaT
+
+
 def first_non_empty(item: dict[str, Any], candidates: list[str]) -> Any:
     normalized_item = {normalize_key(key): value for key, value in item.items()}
     for candidate in candidates:
@@ -352,6 +373,14 @@ def normalize_stock_code(value: Any) -> str:
 def normalize_cb_code(value: Any) -> str:
     match = re.search(r"\b(\d{5,6})\b", str(value))
     return match.group(1) if match else ""
+
+
+def extract_url_query_value(url: str, key: str) -> str:
+    try:
+        values = parse_qs(urlparse(str(url or "")).query).get(key, [])
+        return str(values[0]).strip() if values else ""
+    except Exception:
+        return ""
 
 
 def collect_stock_codes(payload: Any) -> set[str]:
@@ -1232,6 +1261,57 @@ def fetch_tpex_cb() -> tuple[pd.DataFrame, list[str]]:
 
 
 @st.cache_data(ttl=600, show_spinner=False)
+def fetch_tpex_recent_listed_cb() -> tuple[pd.DataFrame, list[str]]:
+    rows: list[dict[str, Any]] = []
+    issues: list[str] = []
+    payload = {"name": "bondIssuer", "searchNo": "", "response": "json"}
+
+    try:
+        response = requests.post(
+            TPEX_RECENT_CB_LISTED_URL,
+            data=payload,
+            headers=HTTP_HEADERS,
+            timeout=25,
+            verify=False,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as exc:
+        issues.append(f"櫃買最近上櫃頁讀取失敗：{exc}")
+        return pd.DataFrame(rows), issues
+
+    table = (data.get("tables") or [{}])[0] if isinstance(data, dict) else {}
+    fields = table.get("fields") or []
+    for item in table.get("data") or []:
+        if not isinstance(item, list) or len(item) < len(fields):
+            continue
+        row = dict(zip(fields, item))
+        stock_code = normalize_stock_code(row.get("發行機構代碼", ""))
+        issue_link = str(row.get("發行資料", "") or "").strip()
+        cb_code = normalize_cb_code(extract_url_query_value(issue_link, "bond_id"))
+        listing_date = parse_roc_or_ad_date(row.get("掛牌日期", ""))
+        if not stock_code or pd.isna(listing_date):
+            continue
+        rows.append(
+            {
+                "CB代碼": cb_code,
+                "CB名稱": str(row.get("債券名稱") or cb_code).strip(),
+                "股票代號": stock_code,
+                "預計掛牌日": listing_date.strftime("%Y-%m-%d"),
+                "上市日期": listing_date.strftime("%Y-%m-%d"),
+                "事件日來源": "櫃買最近上櫃頁",
+                "資料來源": "TPEx最近上櫃頁",
+                "重訊連結": issue_link,
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df = df.drop_duplicates(subset=["股票代號", "預計掛牌日", "CB代碼"], keep="last")
+    return df, issues
+
+
+@st.cache_data(ttl=600, show_spinner=False)
 def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, list[str]]:
     rows: list[dict[str, Any]] = []
     issues: list[str] = []
@@ -1294,7 +1374,39 @@ def fetch_new_pricing_cases(feed_urls: tuple[str, ...]) -> tuple[pd.DataFrame, l
                 }
             )
 
-    return ensure_columns(pd.DataFrame(rows)), issues
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        recent_df, recent_issues = fetch_tpex_recent_listed_cb()
+        issues.extend(recent_issues)
+        if not recent_df.empty:
+            for idx, row in df.iterrows():
+                if str(row.get("預計掛牌日", "")) != "待查":
+                    continue
+                stock_code = normalize_stock_code(row.get("股票代號", ""))
+                matches = recent_df[recent_df["股票代號"] == stock_code].copy()
+                if matches.empty:
+                    continue
+
+                announce_date = parse_dashboard_date(row.get("定價公告日", ""))
+                matches["_listing_ts"] = pd.to_datetime(matches["預計掛牌日"], errors="coerce")
+                matches = matches.dropna(subset=["_listing_ts"])
+                if pd.notna(announce_date):
+                    future_matches = matches[matches["_listing_ts"] >= pd.Timestamp(announce_date).normalize()]
+                    if not future_matches.empty:
+                        matches = future_matches
+                if matches.empty:
+                    continue
+
+                match = matches.sort_values("_listing_ts").iloc[0]
+                df.at[idx, "CB代碼"] = match.get("CB代碼") or row.get("CB代碼")
+                df.at[idx, "CB名稱"] = match.get("CB名稱") or row.get("CB名稱")
+                df.at[idx, "預計掛牌日"] = match.get("預計掛牌日")
+                df.at[idx, "事件日來源"] = "櫃買最近上櫃頁"
+                if match.get("重訊連結"):
+                    df.at[idx, "重訊連結"] = match.get("重訊連結")
+                df.at[idx, "資料來源"] = "RSS 重訊 + TPEx最近上櫃頁"
+
+    return ensure_columns(df), issues
 
 
 @st.cache_data(ttl=120, show_spinner=False)
