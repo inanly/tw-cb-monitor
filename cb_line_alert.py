@@ -25,6 +25,8 @@ except Exception:
 
 TPEX_CB_URL = "https://www.tpex.org.tw/openapi/v1/bond_ISSBD5_data"
 TPEX_RECENT_CB_LISTED_URL = "https://www.tpex.org.tw/www/zh-tw/bond/convSearch"
+TPEX_STOCK_TRADING_URL = "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock"
+TPEX_DAILY_QUOTES_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
 TAIPEI_TZ = ZoneInfo("Asia/Taipei")
 HEADERS = {
@@ -225,9 +227,9 @@ def fill_conversion_prices_from_master(events: pd.DataFrame) -> pd.DataFrame:
             master_row = master_lookup.loc[cb_code]
             if not is_number(result.at[idx, "conversion_price"]) or float(result.at[idx, "conversion_price"]) <= 0:
                 result.at[idx, "conversion_price"] = float(master_row.get("conversion_price", float("nan")))
-            if not str(result.at[idx].get("cb_name", "")).strip():
+            if not str(result.loc[idx].get("cb_name", "")).strip():
                 result.at[idx, "cb_name"] = str(master_row.get("cb_name", ""))
-            if not str(result.at[idx].get("issuer", "")).strip():
+            if not str(result.loc[idx].get("issuer", "")).strip():
                 result.at[idx, "issuer"] = str(master_row.get("issuer", ""))
 
     issue_links = result["issue_link"] if "issue_link" in result.columns else pd.Series("", index=result.index)
@@ -302,6 +304,149 @@ def market_cap_to_yi(value: float) -> float:
     return float(value) / 100_000_000
 
 
+def month_start_values(target_date: pd.Timestamp, months_back: int = 2) -> list[str]:
+    month_start = pd.Timestamp(target_date).replace(day=1)
+    values = []
+    for offset in range(months_back, -1, -1):
+        values.append((month_start - pd.DateOffset(months=offset)).strftime("%Y/%m/01"))
+    return values
+
+
+def fetch_tpex_stock_history(stock_code: str, target_date: pd.Timestamp) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for month_value in month_start_values(target_date, months_back=2):
+        try:
+            response = requests.get(
+                TPEX_STOCK_TRADING_URL,
+                params={"code": stock_code, "date": month_value, "response": "json"},
+                headers=HEADERS,
+                timeout=30,
+                verify=False,
+            )
+            response.raise_for_status()
+            raw = response.json()
+        except Exception:
+            continue
+
+        table = (raw.get("tables") or [{}])[0] if isinstance(raw, dict) else {}
+        fields = table.get("fields") or []
+        for item in table.get("data") or []:
+            if not isinstance(item, list) or len(item) < len(fields):
+                continue
+            row = dict(zip(fields, item))
+            trade_date = parse_roc_date(row.get("日 期", ""))
+            close = clean_float(row.get("收盤"))
+            volume = clean_float(row.get("成交張數"))
+            if pd.isna(trade_date) or close <= 0:
+                continue
+            rows.append({"date": trade_date, "close": close, "volume": volume})
+
+    if not rows:
+        return pd.DataFrame(columns=["close", "volume"])
+
+    df = pd.DataFrame(rows).drop_duplicates("date", keep="last").sort_values("date")
+    return df.set_index("date")
+
+
+def fetch_tpex_market_cap_yi(stock_code: str) -> float:
+    try:
+        response = requests.get(TPEX_DAILY_QUOTES_URL, headers=HEADERS, timeout=45, verify=False)
+        response.raise_for_status()
+        raw = response.json()
+    except Exception:
+        return float("nan")
+
+    if not isinstance(raw, list):
+        return float("nan")
+
+    for item in raw:
+        if not isinstance(item, dict) or str(item.get("SecuritiesCompanyCode", "")).strip() != stock_code:
+            continue
+        close = clean_float(item.get("Close"))
+        shares = clean_float(item.get("Capitals"))
+        if close > 0 and shares > 0:
+            return close * shares / 100_000_000
+    return float("nan")
+
+
+def compute_listing_day_factors_public(
+    events: pd.DataFrame,
+    target_date: pd.Timestamp,
+    config: StrongConfig,
+    reason: str = "",
+) -> tuple[pd.DataFrame, list[str]]:
+    issues: list[str] = []
+    if reason:
+        issues.append(f"FinLab 資料讀取失敗，已改用櫃買公開資料備援：{reason}")
+
+    rows: list[dict[str, Any]] = []
+    for event in events.itertuples(index=False):
+        stock_code = str(event.stock_code)
+        history = fetch_tpex_stock_history(stock_code, target_date)
+        if history.empty or stock_code == "":
+            issues.append(f"{stock_code} 找不到櫃買日成交資料，無法備援判斷")
+            continue
+
+        close_series = pd.to_numeric(history["close"], errors="coerce").dropna()
+        volume_series = pd.to_numeric(history["volume"], errors="coerce").dropna()
+        pos = int(close_series.index.searchsorted(target_date, side="left"))
+        if pos >= len(close_series) or close_series.index[pos].normalize() != target_date:
+            issues.append(f"{stock_code} {target_date.date()} 櫃買收盤價尚未更新，略過")
+            continue
+        if pos < 20:
+            issues.append(f"{stock_code} 櫃買歷史資料不足 20 交易日")
+            continue
+
+        anchor_price = float(close_series.iloc[pos])
+        prior_price = float(close_series.iloc[pos - 20])
+        conversion_price = float(event.conversion_price)
+        pre_return_pct = (anchor_price / prior_price - 1) * 100 if prior_price > 0 else float("nan")
+        conversion_gap_pct = (anchor_price / conversion_price - 1) * 100 if conversion_price > 0 else float("nan")
+
+        pre_volume_ratio = float("nan")
+        event_volume_ratio = float("nan")
+        volume_pos = int(volume_series.index.searchsorted(target_date, side="left"))
+        if volume_pos < len(volume_series) and volume_series.index[volume_pos].normalize() == target_date:
+            pre_20d_avg_volume = average_before(volume_series, volume_pos, 20, 10)
+            pre_5d_avg_volume = average_before(volume_series, volume_pos, 5, 3)
+            event_volume = float(volume_series.iloc[volume_pos])
+            if is_number(pre_20d_avg_volume) and pre_20d_avg_volume > 0:
+                pre_volume_ratio = pre_5d_avg_volume / pre_20d_avg_volume
+                event_volume_ratio = event_volume / pre_20d_avg_volume
+
+        market_cap_yi = fetch_tpex_market_cap_yi(stock_code)
+        checks = {
+            "市值>=80億": pass_min(market_cap_yi, config.market_cap_min_yi),
+            "掛牌前20日漲幅>=20%": pass_min(pre_return_pct, config.pre_return_min_pct),
+            "事件溢價>=2%": pass_min(conversion_gap_pct, config.conversion_gap_min_pct),
+            "5日量比<=2": pass_max(pre_volume_ratio, config.pre_volume_ratio_max),
+            "掛牌日量比<=1": pass_max(event_volume_ratio, config.event_volume_ratio_max),
+        }
+        strong = all(checks.values())
+        failed = [name for name, ok in checks.items() if not ok]
+
+        rows.append(
+            {
+                "strong": strong,
+                "failed": "、".join(failed),
+                "cb_code": str(event.cb_code),
+                "cb_name": str(event.cb_name),
+                "stock_code": stock_code,
+                "issuer": str(event.issuer),
+                "listing_date": target_date.date().isoformat(),
+                "conversion_price": conversion_price,
+                "stock_price": anchor_price,
+                "market_cap_yi": market_cap_yi,
+                "pre_return_pct": pre_return_pct,
+                "conversion_gap_pct": conversion_gap_pct,
+                "pre_volume_ratio": pre_volume_ratio,
+                "event_volume_ratio": event_volume_ratio,
+            }
+        )
+
+    return pd.DataFrame(rows), issues
+
+
 def compute_listing_day_factors(
     events: pd.DataFrame,
     target_date: pd.Timestamp,
@@ -311,13 +456,16 @@ def compute_listing_day_factors(
     if events.empty:
         return pd.DataFrame(), issues
 
-    data = login_finlab()
-    data.truncate_start = (target_date - timedelta(days=180)).strftime("%Y-%m-%d")
-    data.truncate_end = target_date.strftime("%Y-%m-%d")
+    try:
+        data = login_finlab()
+        data.truncate_start = (target_date - timedelta(days=180)).strftime("%Y-%m-%d")
+        data.truncate_end = target_date.strftime("%Y-%m-%d")
 
-    close = finlab_wide_to_pandas(data.get("price:收盤價"))
-    volume = finlab_wide_to_pandas(data.get("price:成交股數"))
-    market_value = finlab_wide_to_pandas(data.get("etl:market_value"))
+        close = finlab_wide_to_pandas(data.get("price:收盤價"))
+        volume = finlab_wide_to_pandas(data.get("price:成交股數"))
+        market_value = finlab_wide_to_pandas(data.get("etl:market_value"))
+    except Exception as exc:
+        return compute_listing_day_factors_public(events, target_date, config, str(exc))
 
     rows: list[dict[str, Any]] = []
     for event in events.itertuples(index=False):
@@ -388,6 +536,15 @@ def compute_listing_day_factors(
                 "event_volume_ratio": event_volume_ratio,
             }
         )
+
+    if not rows:
+        public_result, public_issues = compute_listing_day_factors_public(
+            events,
+            target_date,
+            config,
+            "FinLab 尚無完整掛牌日資料",
+        )
+        return public_result, issues + public_issues
 
     return pd.DataFrame(rows), issues
 
